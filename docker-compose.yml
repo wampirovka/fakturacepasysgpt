@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: fakturace-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: fakturace
+      POSTGRES_USER: fakturace
+      POSTGRES_PASSWORD: fakturace_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - fakturace_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  fakturace_postgres_data:
