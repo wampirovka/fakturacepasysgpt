@@ -1,3 +1,6 @@
+import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
 
 const invoices = [
@@ -6,68 +9,41 @@ const invoices = [
   { number: "ZF-2026-0012", customer: "Petrák", date: "14. 9. 2026", amount: "30 000 Kč", status: "Čeká na úhradu", statusClass: "status-due" },
 ];
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const session = await auth.api.getSession({ headers: await headers() });
+
+  if (!session) {
+    redirect("/prihlaseni");
+  }
+
   return (
     <AppShell>
       <div className="content">
         <header className="page-header">
           <div>
             <p className="eyebrow">Přehled firmy</p>
-            <h1 className="page-title">Dobrý den</h1>
+            <h1 className="page-title">Dobrý den, {session.user.name}</h1>
             <p className="page-subtitle">Tady máte rychlý přehled fakturace a úhrad.</p>
           </div>
           <button className="button button-primary">＋ Nová faktura</button>
         </header>
 
         <section className="dashboard-grid" aria-label="Souhrnné údaje">
-          <article className="stat-card">
-            <div className="stat-label">K úhradě</div>
-            <div className="stat-value">84 500 Kč</div>
-            <div className="stat-note">3 neuhrazené doklady</div>
-          </article>
-          <article className="stat-card">
-            <div className="stat-label">Po splatnosti</div>
-            <div className="stat-value">12 300 Kč</div>
-            <div className="stat-note">2 doklady</div>
-          </article>
-          <article className="stat-card">
-            <div className="stat-label">Vystaveno tento měsíc</div>
-            <div className="stat-value">156 000 Kč</div>
-            <div className="stat-note">8 dokladů</div>
-          </article>
-          <article className="stat-card">
-            <div className="stat-label">Uhrazeno tento měsíc</div>
-            <div className="stat-value">103 500 Kč</div>
-            <div className="stat-note">6 úhrad</div>
-          </article>
+          <article className="stat-card"><div className="stat-label">K úhradě</div><div className="stat-value">84 500 Kč</div><div className="stat-note">3 neuhrazené doklady</div></article>
+          <article className="stat-card"><div className="stat-label">Po splatnosti</div><div className="stat-value">12 300 Kč</div><div className="stat-note">2 doklady</div></article>
+          <article className="stat-card"><div className="stat-label">Vystaveno tento měsíc</div><div className="stat-value">156 000 Kč</div><div className="stat-note">8 dokladů</div></article>
+          <article className="stat-card"><div className="stat-label">Uhrazeno tento měsíc</div><div className="stat-value">103 500 Kč</div><div className="stat-note">6 úhrad</div></article>
         </section>
 
         <section className="panel">
-          <div className="panel-header">
-            <div>
-              <h2>Poslední doklady</h2>
-              <span>Nejnovější faktury a zálohy</span>
-            </div>
-          </div>
+          <div className="panel-header"><div><h2>Poslední doklady</h2><span>Nejnovější faktury a zálohy</span></div></div>
           <div className="table-wrap">
             <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Číslo</th>
-                  <th>Zákazník</th>
-                  <th>Vystaveno</th>
-                  <th>Částka</th>
-                  <th>Stav</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Číslo</th><th>Zákazník</th><th>Vystaveno</th><th>Částka</th><th>Stav</th></tr></thead>
               <tbody>
                 {invoices.map((invoice) => (
                   <tr key={invoice.number}>
-                    <td>{invoice.number}</td>
-                    <td>{invoice.customer}</td>
-                    <td>{invoice.date}</td>
-                    <td className="amount">{invoice.amount}</td>
-                    <td><span className={`status ${invoice.statusClass}`}>{invoice.status}</span></td>
+                    <td>{invoice.number}</td><td>{invoice.customer}</td><td>{invoice.date}</td><td className="amount">{invoice.amount}</td><td><span className={`status ${invoice.statusClass}`}>{invoice.status}</span></td>
                   </tr>
                 ))}
               </tbody>
