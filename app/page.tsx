@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { AppShell } from "@/components/app-shell";
 
 const invoices = [
@@ -14,6 +15,15 @@ export default async function DashboardPage() {
 
   if (!session) {
     redirect("/prihlaseni");
+  }
+
+  const membership = await prisma.companyMember.findFirst({
+    where: { userId: session.user.id },
+    include: { company: true },
+  });
+
+  if (!membership) {
+    redirect("/firma");
   }
 
   return (
