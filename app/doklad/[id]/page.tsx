@@ -11,8 +11,8 @@ type Payment = { id: string; amount: string | number; paidAt: string; method: st
 type Application = { id: string; amount: string | number; advanceInvoice: { id: string; number: string | null } };
 type ItemForm = { description: string; quantity: string; unit: string; unitPrice: string; discount: string; vatRate: string };
 type Invoice = {
-  id: string; number: string | null; type: string; status: string; issueDate: string; dueDate: string | null;
-  subtotal: string | number; total: string | number; paidAmount: string | number; paymentMethod: string; variableSymbol: string | null;
+  id: string; number: string | null; type: string; status: string; issueDate: string; dueDate: string | null; taxableDate: string | null;
+  subtotal: string | number; total: string | number; paidAmount: string | number; paymentMethod: string; variableSymbol: string | null; constantSymbol: string | null; specificSymbol: string | null; note: string | null;
   sellerName: string | null; sellerIco: string | null; sellerDic: string | null; sellerStreet: string | null; sellerCity: string | null; sellerZip: string | null; sellerCountry: string | null;
   sellerEmail: string | null; sellerPhone: string | null; buyerName: string | null; buyerIco: string | null; buyerDic: string | null; buyerStreet: string | null; buyerCity: string | null; buyerZip: string | null;
   buyerCountry: string | null; buyerEmail: string | null; buyerPhone: string | null; customer: Customer | null; items: Item[]; payments: Payment[]; advanceApplications: Application[];
@@ -152,14 +152,50 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
     <section className="panel detail-card print-hide"><div className="panel-header"><div><h2>Úhrady</h2><span>{invoice.payments.length} záznamů</span></div></div>{invoice.payments.length?<div className="table-wrap"><table className="data-table"><thead><tr><th>Datum</th><th>Způsob</th><th>Poznámka</th><th className="amount">Částka</th></tr></thead><tbody>{invoice.payments.map(p=><tr key={p.id}><td>{new Date(p.paidAt).toLocaleDateString("cs-CZ")}</td><td>{methodText[p.method]??p.method}</td><td>{p.note??"-"}</td><td className="amount">{Number(p.amount).toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</td></tr>)}</tbody></table></div>:<p className="detail-empty">Zatím bez úhrady.</p>}</section>
 
     <section className="print-invoice">
-      <div className="print-head">
-        <div><div className="print-doc-label">{isAdvance?"ZÁLOHOVÁ FAKTURA":"FAKTURA"}</div><h1>{invoice.number ?? "Doklad"}</h1></div>
-        <div className="print-meta"><div><span>Datum vystavení</span><strong>{new Date(invoice.issueDate).toLocaleDateString("cs-CZ")}</strong></div><div><span>Splatnost</span><strong>{invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString("cs-CZ") : "-"}</strong></div><div><span>Variabilní symbol</span><strong>{invoice.variableSymbol ?? invoice.number ?? "-"}</strong></div></div>
+      <div className="print-topline">
+        <div className="print-brand"><strong>{invoice.sellerName ?? "Fakturace"}</strong><span>{invoice.sellerStreet ?? ""}{invoice.sellerCity ? (invoice.sellerStreet ? ", " : "") + invoice.sellerCity : ""}</span></div>
+        <div className="print-type"><span>{vatPayer ? "DAŇOVÝ DOKLAD" : "FAKTURA"}</span><strong>{isAdvance ? "ZÁLOHOVÁ FAKTURA" : "FAKTURA"}</strong></div>
       </div>
-      <div className="print-parties"><div><span className="print-label">DODAVATEL</span><strong>{invoice.sellerName ?? "-"}</strong><span>{invoice.sellerIco ? "IČO " + invoice.sellerIco : ""}</span><span>{invoice.sellerDic ? "DIČ " + invoice.sellerDic : ""}</span><span>{[invoice.sellerStreet, invoice.sellerZip, invoice.sellerCity].filter(Boolean).join(", ")}</span><span>{invoice.sellerEmail ?? ""}</span><span>{invoice.sellerPhone ?? ""}</span></div><div><span className="print-label">ODBĚRATEL</span><strong>{invoice.buyerName ?? "-"}</strong><span>{invoice.buyerIco ? "IČO " + invoice.buyerIco : ""}</span><span>{invoice.buyerDic ? "DIČ " + invoice.buyerDic : ""}</span><span>{[invoice.buyerStreet, invoice.buyerZip, invoice.buyerCity].filter(Boolean).join(", ")}</span><span>{invoice.buyerEmail ?? ""}</span><span>{invoice.buyerPhone ?? ""}</span></div></div>
-      <table className="print-items"><thead><tr><th>Položka</th><th>Množství</th><th>Jedn.</th><th className="right">Cena/j.</th>{vatPayer&&<th>DPH</th>}<th className="right">Celkem</th></tr></thead><tbody>{invoice.items.map(x=><tr key={x.id}><td><strong>{x.description}</strong>{Number(x.discount)>0&&<small>Sleva {Number(x.discount).toLocaleString("cs-CZ")}%</small>}</td><td>{Number(x.quantity).toLocaleString("cs-CZ")}</td><td>{x.unit}</td><td className="right">{Number(x.unitPrice).toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</td>{vatPayer&&<td>{x.vatRate===null?"-":Number(x.vatRate).toLocaleString("cs-CZ")+" %"}</td>}<td className="right">{(Number(x.lineTotal)+(vatPayer?Number(x.lineTotal)*Number(x.vatRate||0)/100:0)).toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</td></tr>)}</tbody></table>
-      <div className="print-bottom"><div className="print-payment"><span className="print-label">PLATEBNÍ ÚDAJE</span><div>Způsob úhrady: <strong>{methodText[invoice.paymentMethod] ?? invoice.paymentMethod}</strong></div><div>Variabilní symbol: <strong>{invoice.variableSymbol ?? invoice.number ?? "-"}</strong></div></div><div className="print-totals"><div><span>Základ</span><strong>{detailNet.toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</strong></div>{vatPayer&&<div><span>DPH</span><strong>{detailVat.toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</strong></div>}<div><span>Celkem za plnění</span><strong>{total.toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</strong></div>{applied>0&&<div><span>Vypořádané zálohy</span><strong>− {applied.toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</strong></div>}<div className="print-total-grand"><span>K ÚHRADĚ</span><strong>{remaining.toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</strong></div></div></div>
-      <div className="print-footer"><span>Doklad vystavený v aplikaci Fakturace</span><span>{statusText[invoice.status] ?? invoice.status}</span></div>
+
+      <div className="print-head">
+        <div><div className="print-number-label">ČÍSLO DOKLADU</div><h1>{invoice.number ?? "Doklad"}</h1></div>
+        <div className="print-meta">
+          <div><span>Vystaveno</span><strong>{new Date(invoice.issueDate).toLocaleDateString("cs-CZ")}</strong></div>
+          {invoice.taxableDate && <div><span>DUZP</span><strong>{new Date(invoice.taxableDate).toLocaleDateString("cs-CZ")}</strong></div>}
+          <div><span>Splatnost</span><strong>{invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString("cs-CZ") : "-"}</strong></div>
+        </div>
+      </div>
+
+      <div className="print-parties">
+        <div><span className="print-label">DODAVATEL</span><strong>{invoice.sellerName ?? "-"}</strong><span>{[invoice.sellerStreet, invoice.sellerZip, invoice.sellerCity].filter(Boolean).join(", ")}</span><span>{invoice.sellerIco ? "IČO: " + invoice.sellerIco : ""}</span><span>{invoice.sellerDic ? "DIČ: " + invoice.sellerDic : ""}</span><span>{invoice.sellerEmail ?? ""}{invoice.sellerPhone ? " · " + invoice.sellerPhone : ""}</span></div>
+        <div><span className="print-label">ODBĚRATEL</span><strong>{invoice.buyerName ?? "-"}</strong><span>{[invoice.buyerStreet, invoice.buyerZip, invoice.buyerCity].filter(Boolean).join(", ")}</span><span>{invoice.buyerIco ? "IČO: " + invoice.buyerIco : ""}</span><span>{invoice.buyerDic ? "DIČ: " + invoice.buyerDic : ""}</span><span>{invoice.buyerEmail ?? ""}{invoice.buyerPhone ? " · " + invoice.buyerPhone : ""}</span></div>
+      </div>
+
+      <table className="print-items">
+        <thead><tr><th>Předmět plnění</th><th className="qty">Množství</th><th className="unit">Jedn.</th><th className="right">Cena / jedn.</th>{vatPayer&&<th className="vat">DPH</th>}<th className="right">Cena celkem</th></tr></thead>
+        <tbody>{invoice.items.map(x=><tr key={x.id}><td><strong>{x.description}</strong>{Number(x.discount)>0&&<small>Sleva {Number(x.discount).toLocaleString("cs-CZ")}%</small>}</td><td className="qty">{Number(x.quantity).toLocaleString("cs-CZ")}</td><td className="unit">{x.unit}</td><td className="right">{Number(x.unitPrice).toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</td>{vatPayer&&<td className="vat">{x.vatRate===null?"-":Number(x.vatRate).toLocaleString("cs-CZ")+" %"}</td>}<td className="right">{(Number(x.lineTotal)+(vatPayer?Number(x.lineTotal)*Number(x.vatRate||0)/100:0)).toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</td></tr>)}</tbody>
+      </table>
+
+      <div className="print-summary">
+        <div className="print-payment">
+          <span className="print-label">PLATEBNÍ ÚDAJE</span>
+          <div>Způsob úhrady: <strong>{methodText[invoice.paymentMethod] ?? invoice.paymentMethod}</strong></div>
+          <div>Variabilní symbol: <strong>{invoice.variableSymbol ?? invoice.number ?? "-"}</strong></div>
+          {invoice.constantSymbol && <div>Konstantní symbol: <strong>{invoice.constantSymbol}</strong></div>}
+          {invoice.specificSymbol && <div>Specifický symbol: <strong>{invoice.specificSymbol}</strong></div>}
+          {!vatPayer && <div className="print-note">Nejsem plátce DPH.</div>}
+        </div>
+        <div className="print-totals">
+          <div><span>Základ</span><strong>{detailNet.toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</strong></div>
+          {vatPayer&&<div><span>DPH</span><strong>{detailVat.toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</strong></div>}
+          <div><span>Celkem za plnění</span><strong>{total.toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</strong></div>
+          {applied>0&&<div className="print-settlement"><span>Vypořádání záloh</span><strong>− {applied.toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</strong></div>}
+          <div className="print-total-grand"><span>K ÚHRADĚ</span><strong>{remaining.toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</strong></div>
+        </div>
+      </div>
+
+      {invoice.note && <div className="print-note-block"><span className="print-label">POZNÁMKA</span><div>{invoice.note}</div></div>}
+      <div className="print-footer"><span>{invoice.sellerName ?? "Fakturace"}{invoice.sellerIco ? " · IČO " + invoice.sellerIco : ""}{invoice.sellerDic ? " · DIČ " + invoice.sellerDic : ""}</span><span>{statusText[invoice.status] ?? invoice.status}</span></div>
     </section>
     {invoice.advanceApplications.length>0&&<section className="panel detail-card"><div className="panel-header"><div><h2>Vypořádání záloh</h2></div></div><div className="table-wrap"><table className="data-table"><thead><tr><th>Záloha</th><th className="amount">Započteno</th></tr></thead><tbody>{invoice.advanceApplications.map(a=><tr key={a.id}><td>{a.advanceInvoice.number??a.advanceInvoice.id}</td><td className="amount">− {Number(a.amount).toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</td></tr>)}</tbody></table></div></section>}
   </div></AppShell>;
