@@ -7,10 +7,21 @@ type Customer={id:string;type:"BUSINESS"|"PERSON";name:string;ico:string|null;di
 const empty={type:"BUSINESS" as const,name:"",ico:"",dic:"",street:"",city:"",zip:"",country:"CZ",email:"",phone:"",note:""};
 
 export default function ZakazniciPage(){
- const [items,setItems]=useState<Customer[]>([]),[form,setForm]=useState(empty),[edit,setEdit]=useState<string|null>(null),[q,setQ]=useState(""),[loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[msg,setMsg]=useState<string|null>(null);
+ const [items,setItems]=useState<Customer[]>([]),[form,setForm]=useState(empty),[edit,setEdit]=useState<string|null>(null),[q,setQ]=useState(""),[loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[aresLoading,setAresLoading]=useState(false),[msg,setMsg]=useState<string|null>(null);
  async function load(){setLoading(true);try{const r=await fetch("/api/customers?q="+encodeURIComponent(q),{cache:"no-store"}),d=await r.json();if(!r.ok)throw Error(d.error);setItems(d.customers)}catch(e){setMsg(e instanceof Error?e.message:"Načtení se nepodařilo.")}finally{setLoading(false)}}
  useEffect(()=>{const t=setTimeout(load,150);return()=>clearTimeout(t)},[q]);
  function reset(){setEdit(null);setForm(empty);setMsg(null)}
+ async function loadFromAres(){
+  const ico=form.ico.replace(/\D/g,"");
+  if(ico.length!==8){setMsg("IČO musí obsahovat přesně 8 číslic.");return}
+  setAresLoading(true);setMsg(null);
+  try{
+   const r=await fetch("/api/ares?ico="+ico,{cache:"no-store"}),d=await r.json();
+   if(!r.ok)throw Error(d.error);
+   setForm(f=>({...f,name:d.name||f.name,ico:d.ico||f.ico,dic:d.dic||f.dic,street:d.street||f.street,city:d.city||f.city,zip:d.zip||f.zip,country:d.country||f.country}));
+   setMsg("Údaje byly načteny z ARES. Před uložením je můžeš upravit.");
+  }catch(e){setMsg(e instanceof Error?e.message:"Načtení z ARES se nepodařilo.")}finally{setAresLoading(false)}
+ }
  function change(k:keyof typeof empty,v:string){setForm(f=>({...f,[k]:v}))}
  function start(c:Customer){setEdit(c.id);setForm({type:c.type,name:c.name,ico:c.ico??"",dic:c.dic??"",street:c.street??"",city:c.city??"",zip:c.zip??"",country:c.country??"CZ",email:c.email??"",phone:c.phone??"",note:c.note??""});setMsg(null);scrollTo({top:0,behavior:"smooth"})}
  async function save(e:React.FormEvent){e.preventDefault();setSaving(true);setMsg(null);try{const r=await fetch(edit?"/api/customers/"+edit:"/api/customers",{method:edit?"PATCH":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(form)}),d=await r.json();if(!r.ok)throw Error(d.error);setMsg(edit?"Zákazník upraven.":"Zákazník přidán.");reset();await load()}catch(e){setMsg(e instanceof Error?e.message:"Uložení se nepodařilo.")}finally{setSaving(false)}}
@@ -22,7 +33,7 @@ export default function ZakazniciPage(){
    <form className="settings-grid" onSubmit={save}>
     <div className="auth-field"><label>Typ</label><select value={form.type} onChange={e=>change("type",e.target.value)}><option value="BUSINESS">Firma</option><option value="PERSON">Fyzická osoba</option></select></div>
     <div className="auth-field"><label>Název / jméno *</label><input required value={form.name} onChange={e=>change("name",e.target.value)}/></div>
-    <div className="auth-field"><label>IČO</label><input value={form.ico} onChange={e=>change("ico",e.target.value)}/></div>
+    <div className="auth-field"><label>IČO</label><div className="ico-lookup"><input inputMode="numeric" maxLength={8} value={form.ico} onChange={e=>change("ico",e.target.value.replace(/\\D/g,""))}/><button type="button" className="button button-secondary button-small" onClick={loadFromAres} disabled={aresLoading}>{aresLoading?"Načítám…":"Načíst z ARES"}</button></div></div>
     <div className="auth-field"><label>DIČ</label><input value={form.dic} onChange={e=>change("dic",e.target.value)}/></div>
     <div className="auth-field settings-wide"><label>Ulice a číslo</label><input value={form.street} onChange={e=>change("street",e.target.value)}/></div>
     <div className="auth-field"><label>Město</label><input value={form.city} onChange={e=>change("city",e.target.value)}/></div>
