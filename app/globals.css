@@ -166,3 +166,68 @@ button {
 .invoice-editor { margin-top: 0; margin-bottom: 22px; overflow: hidden; }
 .invoice-form-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 0 20px 20px; }
 @media (max-width: 760px) { .invoice-form-actions { flex-direction: column; } .invoice-form-actions .button { width: 100%; } }
+
+
+.invoice-mode-switch {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.advance-settlement {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+
+.advance-settlement-list {
+  display: grid;
+  gap: 10px;
+}
+
+.advance-settlement-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  background: var(--surface, #fff);
+}
+
+.advance-settlement-row > div {
+  display: grid;
+  gap: 3px;
+}
+
+.advance-settlement-row span {
+  color: var(--muted, #6b7280);
+  font-size: 13px;
+}
+
+.advance-settlement-row input {
+  width: 150px;
+  flex: 0 0 150px;
+}
+
+.advance-settlement-total {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+
+@media (max-width: 640px) {
+  .advance-settlement-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .advance-settlement-row input {
+    width: 100%;
+    flex-basis: auto;
+  }
+}
