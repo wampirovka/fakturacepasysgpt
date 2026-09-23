@@ -24,7 +24,9 @@ export default function ZakazniciPage(){
  }
  function change(k:keyof typeof empty,v:string){setForm(f=>({...f,[k]:v}))}
  function start(c:Customer){setEdit(c.id);setForm({type:c.type,name:c.name,ico:c.ico??"",dic:c.dic??"",street:c.street??"",city:c.city??"",zip:c.zip??"",country:c.country??"CZ",email:c.email??"",phone:c.phone??"",note:c.note??""});setMsg(null);scrollTo({top:0,behavior:"smooth"})}
- async function save(e:React.FormEvent){e.preventDefault();setSaving(true);setMsg(null);try{const r=await fetch(edit?"/api/customers/"+edit:"/api/customers",{method:edit?"PATCH":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(form)}),d=await r.json();if(!r.ok)throw Error(d.error);setMsg(edit?"Zákazník upraven.":"Zákazník přidán.");reset();await load()}catch(e){setMsg(e instanceof Error?e.message:"Uložení se nepodařilo.")}finally{setSaving(false)}}
+ async function save(e:React.FormEvent){e.preventDefault();setSaving(true);setMsg(null);try{const r=await fetch(edit?"/api/customers/"+edit:"/api/customers",{method:edit?"PATCH":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(form)});
+   const d=await r.json().catch(()=>({error:"Server vrátil neplatnou odpověď."}));
+   if(!r.ok)throw Error(d.error||"Uložení se nepodařilo.");setMsg(edit?"Zákazník upraven.":"Zákazník přidán.");reset();await load()}catch(e){setMsg(e instanceof Error?e.message:"Uložení se nepodařilo.")}finally{setSaving(false)}}
  async function hide(id:string){if(!confirm("Skrýt zákazníka ze seznamu? Historická data zůstanou zachována."))return;const r=await fetch("/api/customers/"+id,{method:"DELETE"}),d=await r.json();if(!r.ok){setMsg(d.error);return}setMsg("Zákazník deaktivován.");load()}
  return <AppShell><div className="content">
   <div className="page-header"><div><p className="eyebrow">Adresář</p><h1 className="page-title">Zákazníci</h1><p className="page-subtitle">Odběratelé aktuální firmy.</p></div><button className="button button-primary" onClick={reset}>+ Nový zákazník</button></div>
