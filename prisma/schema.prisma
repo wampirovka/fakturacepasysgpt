@@ -83,8 +83,40 @@ model Company {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   members     CompanyMember[]
+  customers   Customer[]
 
   @@index([ico])
+}
+
+enum CustomerType {
+  BUSINESS
+  PERSON
+}
+
+model Customer {
+  id        String       @id @default(cuid())
+  companyId String
+  type      CustomerType @default(BUSINESS)
+  name      String
+  ico       String?
+  dic       String?
+  street    String?
+  city      String?
+  zip       String?
+  country   String       @default("CZ")
+  email     String?
+  phone     String?
+  note      String?
+  isActive  Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  company   Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([companyId, name])
+  @@index([companyId, ico])
+  @@index([companyId, isActive])
 }
 
 model CompanyMember {
