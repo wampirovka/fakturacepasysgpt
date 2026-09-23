@@ -231,3 +231,5 @@ button {
     flex-basis: auto;
   }
 }
+
+.actions-heading { text-align: right !important; }
