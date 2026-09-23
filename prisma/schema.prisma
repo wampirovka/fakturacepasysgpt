@@ -78,6 +78,9 @@ model Company {
   email           String?
   website         String?
   logoUrl         String?
+  bankAccount     String?
+  bankCode        String?
+  iban            String?
   vatStatus       String            @default("NON_VAT_PAYER")
   defaultDueDays  Int               @default(14)
   createdAt       DateTime          @default(now())
