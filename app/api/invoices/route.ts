@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { reserveNumber } from "@/lib/numbering";
+import { calculateInvoiceItems, parseInvoiceItems } from "@/lib/invoice-calculation";
 
 async function getMembership() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -32,26 +33,30 @@ export async function POST(request: Request) {
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Neplatná data formuláře." }, { status: 400 }); }
 
   const customerId = typeof body.customerId === "string" && body.customerId ? body.customerId : null;
-  const description = typeof body.description === "string" ? body.description.trim() : "";
-  const quantity = Number(body.quantity ?? 1);
-  const unitPrice = Number(body.unitPrice ?? 0);
   const paymentMethod = body.paymentMethod === "CASH" ? "CASH" : "BANK_TRANSFER";
   const issueDate = body.issueDate ? new Date(String(body.issueDate)) : new Date();
   const dueDays = Math.max(0, Math.min(365, Number(body.dueDays ?? 14)));
 
-  if (!description) return NextResponse.json({ error: "Popis položky je povinný." }, { status: 400 });
-  if (!Number.isFinite(quantity) || quantity <= 0) return NextResponse.json({ error: "Množství musí být větší než 0." }, { status: 400 });
-  if (!Number.isFinite(unitPrice) || unitPrice < 0) return NextResponse.json({ error: "Cena musí být 0 nebo vyšší." }, { status: 400 });
   if (Number.isNaN(issueDate.getTime())) return NextResponse.json({ error: "Neplatné datum vystavení." }, { status: 400 });
 
   try {
     const invoice = await prisma.$transaction(async (tx) => {
       const company = await tx.company.findUnique({ where: { id: membership.companyId } });
       if (!company) throw new Error("Firma nebyla nalezena.");
+
       const customer = customerId ? await tx.customer.findFirst({ where: { id: customerId, companyId: company.id, isActive: true } }) : null;
       if (customerId && !customer) throw new Error("Vybraný zákazník nebyl nalezen.");
 
-      const total = Math.round(quantity * unitPrice * 100) / 100;
+      const rawItems = Array.isArray(body.items) ? body.items : [{
+        description: typeof body.description === "string" ? body.description : "",
+        quantity: Number(body.quantity ?? 1),
+        unit: "ks",
+        unitPrice: Number(body.unitPrice ?? 0),
+        discount: 0,
+        vatRate: null,
+      }];
+      const parsedItems = parseInvoiceItems(rawItems);
+      const calculation = calculateInvoiceItems(parsedItems, company.vatStatus === "VAT_PAYER");
       const dueDate = new Date(issueDate);
       dueDate.setDate(dueDate.getDate() + dueDays);
       const number = await reserveNumber(tx, company.id, "INVOICE", issueDate.getFullYear());
@@ -68,8 +73,8 @@ export async function POST(request: Request) {
           taxableDate: issueDate,
           paymentMethod,
           variableSymbol: number,
-          subtotal: total,
-          total,
+          subtotal: calculation.subtotal,
+          total: calculation.total,
           sellerName: company.name,
           sellerIco: company.ico,
           sellerDic: company.dic,
@@ -88,7 +93,18 @@ export async function POST(request: Request) {
           buyerCountry: customer?.country ?? null,
           buyerEmail: customer?.email ?? null,
           buyerPhone: customer?.phone ?? null,
-          items: { create: { position: 1, description, quantity, unit: "ks", unitPrice, lineTotal: total, vatRate: null } },
+          items: {
+            create: calculation.items.map((item, index) => ({
+              position: index + 1,
+              description: item.description,
+              quantity: item.quantity,
+              unit: item.unit,
+              unitPrice: item.unitPrice,
+              discount: item.discount,
+              lineTotal: item.lineTotal,
+              vatRate: item.vatRate,
+            })),
+          },
         },
       });
     });
