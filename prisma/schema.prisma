@@ -84,6 +84,10 @@ model Company {
   updatedAt   DateTime        @updatedAt
   members     CompanyMember[]
   customers   Customer[]
+  invoices    Invoice[]
+  numberingSeries NumberingSeries[]
+  payments    Payment[]
+  cashDocuments CashDocument[]
 
   @@index([ico])
 }
@@ -91,6 +95,34 @@ model Company {
 enum CustomerType {
   BUSINESS
   PERSON
+}
+
+enum InvoiceType {
+  INVOICE
+  ADVANCE
+  CORRECTIVE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  CASH
+  CARD
+  OTHER
+}
+
+enum NumberingSeriesType {
+  INVOICE
+  ADVANCE
+  CASH_DOCUMENT
 }
 
 model Customer {
@@ -133,4 +165,149 @@ model CompanyMember {
   @@unique([companyId, userId])
   @@index([userId])
   @@index([companyId])
+}
+
+
+model NumberingSeries {
+  id          String             @id @default(cuid())
+  companyId   String
+  type        NumberingSeriesType
+  name        String
+  prefix      String             @default("")
+  year        Int
+  nextNumber  Int                @default(1)
+  padding     Int                @default(3)
+  isActive    Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  company     Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, type, year])
+  @@index([companyId])
+}
+
+model Invoice {
+  id              String          @id @default(cuid())
+  companyId       String
+  customerId      String?
+  type            InvoiceType     @default(INVOICE)
+  status          InvoiceStatus   @default(DRAFT)
+  number          String?
+  issueDate       DateTime        @default(now())
+  dueDate         DateTime?
+  taxableDate     DateTime?
+  currency        String          @default("CZK")
+  paymentMethod   PaymentMethod   @default(BANK_TRANSFER)
+  variableSymbol  String?
+  constantSymbol  String?
+  specificSymbol  String?
+  note            String?
+
+  sellerName      String?
+  sellerIco       String?
+  sellerDic       String?
+  sellerStreet    String?
+  sellerCity      String?
+  sellerZip       String?
+  sellerCountry   String?
+  sellerEmail     String?
+  sellerPhone     String?
+
+  buyerName       String?
+  buyerIco        String?
+  buyerDic        String?
+  buyerStreet     String?
+  buyerCity       String?
+  buyerZip        String?
+  buyerCountry    String?
+  buyerEmail      String?
+  buyerPhone      String?
+
+  subtotal        Decimal         @default(0) @db.Decimal(15, 2)
+  total           Decimal         @default(0) @db.Decimal(15, 2)
+  paidAmount      Decimal         @default(0) @db.Decimal(15, 2)
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer        Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items           InvoiceItem[]
+  payments        Payment[]
+  advanceApplications InvoiceAdvanceApplication[] @relation("FinalInvoiceAdvance")
+  appliedToFinalInvoices InvoiceAdvanceApplication[] @relation("AdvanceInvoiceApplications")
+
+  @@unique([companyId, number])
+  @@index([companyId, issueDate])
+  @@index([companyId, status])
+  @@index([companyId, customerId])
+}
+
+model InvoiceItem {
+  id          String    @id @default(cuid())
+  invoiceId   String
+  position    Int
+  description String
+  quantity    Decimal   @db.Decimal(15, 3)
+  unit        String    @default("ks")
+  unitPrice   Decimal   @db.Decimal(15, 2)
+  discount    Decimal   @default(0) @db.Decimal(5, 2)
+  vatRate     Decimal?  @db.Decimal(5, 2)
+  lineTotal   Decimal   @db.Decimal(15, 2)
+  createdAt   DateTime  @default(now())
+
+  invoice     Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([invoiceId, position])
+  @@index([invoiceId])
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  companyId   String
+  invoiceId   String
+  amount      Decimal       @db.Decimal(15, 2)
+  paidAt      DateTime      @default(now())
+  method      PaymentMethod
+  note        String?
+  createdAt   DateTime      @default(now())
+
+  company     Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invoice     Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  cashDocument CashDocument?
+
+  @@index([companyId, paidAt])
+  @@index([invoiceId])
+}
+
+model InvoiceAdvanceApplication {
+  id              String   @id @default(cuid())
+  finalInvoiceId  String
+  advanceInvoiceId String
+  amount          Decimal  @db.Decimal(15, 2)
+  createdAt       DateTime @default(now())
+
+  finalInvoice    Invoice  @relation("FinalInvoiceAdvance", fields: [finalInvoiceId], references: [id], onDelete: Cascade)
+  advanceInvoice  Invoice  @relation("AdvanceInvoiceApplications", fields: [advanceInvoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([finalInvoiceId, advanceInvoiceId])
+  @@index([advanceInvoiceId])
+}
+
+model CashDocument {
+  id          String        @id @default(cuid())
+  companyId   String
+  paymentId   String?       @unique
+  number      String?
+  date        DateTime      @default(now())
+  amount      Decimal       @db.Decimal(15, 2)
+  method      PaymentMethod @default(CASH)
+  note        String?
+
+  company     Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  payment     Payment?      @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@unique([companyId, number])
+  @@index([companyId, date])
 }
