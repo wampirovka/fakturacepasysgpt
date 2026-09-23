@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 
@@ -58,6 +59,15 @@ export default function FakturyPage() {
     const amount = Number(value);
     return sum + (Number.isFinite(amount) && amount > 0 ? amount : 0);
   }, 0);
+
+  async function deleteInvoice(id: string, number: string | null) {
+    if (!window.confirm(`Opravdu chcete smazat fakturu ${number ?? ""}? Tato akce je nevratná.`)) return;
+    const r = await fetch("/api/invoices/" + id, { method: "DELETE" });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) { setMessage(data.error ?? "Fakturu se nepodařilo smazat."); return; }
+    await load();
+    setMessage("Faktura byla smazána.");
+  }
 
   async function createInvoice(event: React.FormEvent) {
     event.preventDefault(); setSaving(true); setMessage("");
@@ -148,8 +158,9 @@ export default function FakturyPage() {
               <td><strong>{i.number ?? "Rozpracovaná"}</strong></td><td>{i.type === "ADVANCE" ? "Zálohová" : i.type === "CORRECTIVE" ? "Opravná" : "Faktura"}</td>
               <td>{i.customer?.name ?? "Neuvedený zákazník"}</td><td>{new Date(i.issueDate).toLocaleDateString("cs-CZ")}</td>
               <td>{i.dueDate ? new Date(i.dueDate).toLocaleDateString("cs-CZ") : "-"}</td><td><span className="status status-due">{statusText[i.status] ?? i.status}</span></td>
+              <td><div className="row-actions"><Link className="button button-secondary button-small" href={`/doklad/${i.id}`}>Detail</Link><Link className="button button-secondary button-small" href={`/doklad/${i.id}?edit=1`}>Upravit</Link><button className="button button-danger button-small" onClick={() => deleteInvoice(i.id, i.number)}>Smazat</button></div></td>
               <td className="amount">{Number(i.total).toLocaleString("cs-CZ", { minimumFractionDigits: 2 })} Kč</td>
-            </tr>) : <tr><td colSpan={7} className="table-muted">Zatím tu nejsou žádné faktury.</td></tr>}</tbody>
+            </tr>) : <tr><td colSpan={8} className="table-muted">Zatím tu nejsou žádné faktury.</td></tr>}</tbody>
           </table></div>
         </section>
       </div>
