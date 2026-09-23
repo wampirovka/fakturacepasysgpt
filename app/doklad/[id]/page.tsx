@@ -120,6 +120,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
     {editing&&<section className="panel invoice-editor">
       <div className="panel-header"><div><h2>Úprava dokladu</h2><span>Číslo lze upravit, pokud ještě nebyla zaevidována úhrada.</span></div></div>
       <div className="settings-grid">
+        <Field label="Číslo dokladu" value={form.number} onChange={v=>setForm({...form,number:v})}/>
         <div className="auth-field"><label>Zákazník</label><select value={form.customerId} onChange={e=>setForm({...form,customerId:e.target.value})}><option value="">Vyberte zákazníka</option>{customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
         <Field label="Datum vystavení" type="date" value={form.issueDate} onChange={v=>setForm({...form,issueDate:v})}/>
         <Field label="Splatnost (dny)" type="number" value={form.dueDays} onChange={v=>setForm({...form,dueDays:v})}/>
