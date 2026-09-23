@@ -15,6 +15,9 @@ type Company = {
   email: string | null;
   website: string | null;
   logoUrl: string | null;
+  bankAccount: string | null;
+  bankCode: string | null;
+  iban: string | null;
   vatStatus: string;
   defaultDueDays: number;
 };
@@ -31,6 +34,9 @@ const emptyCompany: Company = {
   email: null,
   website: null,
   logoUrl: null,
+  bankAccount: null,
+  bankCode: null,
+  iban: null,
   vatStatus: "NON_VAT_PAYER",
   defaultDueDays: 14,
 };
@@ -135,6 +141,9 @@ export default function NastaveniPage() {
               <Field label="E-mail" type="email" value={company.email ?? ""} onChange={(value) => update("email", value)} />
               <Field label="Web" value={company.website ?? ""} onChange={(value) => update("website", value)} />
               <Field label="Logo URL" value={company.logoUrl ?? ""} onChange={(value) => update("logoUrl", value)} />
+              <Field label="Číslo účtu" value={company.bankAccount ?? ""} onChange={(value) => update("bankAccount", value)} />
+              <Field label="Kód banky" value={company.bankCode ?? ""} onChange={(value) => update("bankCode", value)} />
+              <Field label="IBAN" value={company.iban ?? ""} onChange={(value) => update("iban", value)} />
               <div className="auth-field">
                 <label htmlFor="vatStatus">Režim DPH</label>
                 <select id="vatStatus" value={company.vatStatus} onChange={(event) => update("vatStatus", event.target.value)}>
