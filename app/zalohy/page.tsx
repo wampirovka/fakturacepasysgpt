@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 
@@ -48,6 +49,15 @@ export default function ZalohyPage() {
 
   useEffect(() => { load().catch(() => setMessage("Nepodařilo se načíst data.")); }, []);
 
+  async function deleteAdvance(id: string, number: string | null) {
+    if (!window.confirm(`Opravdu chcete smazat zálohovou fakturu ${number ?? ""}? Tato akce je nevratná.`)) return;
+    const r = await fetch("/api/invoices/" + id, { method: "DELETE" });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) { setMessage(data.error ?? "Zálohovou fakturu se nepodařilo smazat."); return; }
+    await load();
+    setMessage("Zálohová faktura byla smazána.");
+  }
+
   async function createAdvance(event: React.FormEvent) {
     event.preventDefault();
     setSaving(true);
@@ -95,8 +105,8 @@ export default function ZalohyPage() {
       <div className="table-wrap"><table className="data-table"><thead><tr><th>Číslo</th><th>Zákazník</th><th>Vystavení</th><th>Splatnost</th><th>Stav</th><th>Započteno</th><th className="amount">Částka</th></tr></thead>
       <tbody>{advances.length ? advances.map(a => {
         const applied = a.appliedToFinalInvoices.reduce((sum, x) => sum + Number(x.amount), 0);
-        return <tr key={a.id}><td><strong>{a.number ?? "Rozpracovaná"}</strong></td><td>{a.customer?.name ?? "Neuvedený zákazník"}</td><td>{new Date(a.issueDate).toLocaleDateString("cs-CZ")}</td><td>{a.dueDate ? new Date(a.dueDate).toLocaleDateString("cs-CZ") : "-"}</td><td><span className="status status-due">{statusText[a.status] ?? a.status}</span></td><td>{applied.toLocaleString("cs-CZ", { minimumFractionDigits: 2 })} Kč</td><td className="amount">{Number(a.total).toLocaleString("cs-CZ", { minimumFractionDigits: 2 })} Kč</td></tr>;
-      }) : <tr><td colSpan={7} className="table-muted">Zatím tu nejsou žádné zálohové faktury.</td></tr>}</tbody></table></div>
+        return <tr key={a.id}><td><strong>{a.number ?? "Rozpracovaná"}</strong></td><td>{a.customer?.name ?? "Neuvedený zákazník"}</td><td>{new Date(a.issueDate).toLocaleDateString("cs-CZ")}</td><td>{a.dueDate ? new Date(a.dueDate).toLocaleDateString("cs-CZ") : "-"}</td><td><span className="status status-due">{statusText[a.status] ?? a.status}</span></td><td>{applied.toLocaleString("cs-CZ", { minimumFractionDigits: 2 })} Kč</td><td><div className="row-actions"><Link className="button button-secondary button-small" href={`/doklad/${a.id}`}>Detail</Link><Link className="button button-secondary button-small" href={`/doklad/${a.id}?edit=1`}>Upravit</Link><button className="button button-danger button-small" onClick={() => deleteAdvance(a.id, a.number)}>Smazat</button></div></td><td className="amount">{Number(a.total).toLocaleString("cs-CZ", { minimumFractionDigits: 2 })} Kč</td></tr>;
+      }) : <tr><td colSpan={8} className="table-muted">Zatím tu nejsou žádné zálohové faktury.</td></tr>}</tbody></table></div>
     </section>
   </div></AppShell>;
 }
