@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { reserveNumber } from "@/lib/numbering";
+import { calculateInvoiceItems, parseInvoiceItems } from "@/lib/invoice-calculation";
 
 async function getMembership() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -39,12 +40,13 @@ export async function POST(request: Request) {
   const customerId = typeof body.customerId === "string" && body.customerId ? body.customerId : null;
   const description = typeof body.description === "string" ? body.description.trim() : "";
   const amount = Number(body.amount ?? 0);
+  const rawItems = Array.isArray(body.items) ? body.items : [{ description, quantity: 1, unit: "ks", unitPrice: amount, discount: 0, vatRate: null }];
   const issueDate = body.issueDate ? new Date(String(body.issueDate)) : new Date();
   const dueDays = Math.max(0, Math.min(365, Number(body.dueDays ?? 14)));
 
   if (!customerId) return NextResponse.json({ error: "Zákazník je u zálohové faktury povinný." }, { status: 400 });
-  if (!description) return NextResponse.json({ error: "Popis zálohy je povinný." }, { status: 400 });
-  if (!Number.isFinite(amount) || amount <= 0) return NextResponse.json({ error: "Částka zálohy musí být větší než 0." }, { status: 400 });
+  if (!description && !Array.isArray(body.items)) return NextResponse.json({ error: "Popis zálohy je povinný." }, { status: 400 });
+  if (!Number.isFinite(amount) || amount < 0) return NextResponse.json({ error: "Částka zálohy není platná." }, { status: 400 });
   if (Number.isNaN(issueDate.getTime())) return NextResponse.json({ error: "Neplatné datum vystavení." }, { status: 400 });
 
   try {
@@ -57,6 +59,7 @@ export async function POST(request: Request) {
       });
       if (!customer) throw new Error("Vybraný zákazník nebyl nalezen.");
 
+      const calculation = calculateInvoiceItems(parseInvoiceItems(rawItems), company.vatStatus === "VAT_PAYER");
       const dueDate = new Date(issueDate);
       dueDate.setDate(dueDate.getDate() + dueDays);
       const number = await reserveNumber(tx, company.id, "ADVANCE", issueDate.getFullYear());
@@ -72,8 +75,8 @@ export async function POST(request: Request) {
           dueDate,
           paymentMethod: "BANK_TRANSFER",
           variableSymbol: number,
-          subtotal: amount,
-          total: amount,
+          subtotal: calculation.subtotal,
+          total: calculation.total,
           sellerName: company.name,
           sellerIco: company.ico,
           sellerDic: company.dic,
@@ -93,15 +96,16 @@ export async function POST(request: Request) {
           buyerEmail: customer.email,
           buyerPhone: customer.phone,
           items: {
-            create: {
-              position: 1,
-              description,
-              quantity: 1,
-              unit: "ks",
-              unitPrice: amount,
-              lineTotal: amount,
-              vatRate: null,
-            },
+            create: calculation.items.map((item, index) => ({
+              position: index + 1,
+              description: item.description,
+              quantity: item.quantity,
+              unit: item.unit,
+              unitPrice: item.unitPrice,
+              discount: item.discount,
+              lineTotal: item.lineTotal,
+              vatRate: item.vatRate,
+            })),
           },
         },
       });
