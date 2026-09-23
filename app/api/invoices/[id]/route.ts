@@ -100,11 +100,12 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         where: { id: invoice.id },
         data: {
           customerId: customer?.id ?? null,
+          number: requestedNumber,
           issueDate,
           dueDate,
           taxableDate: issueDate,
           paymentMethod,
-          variableSymbol: invoice.number ?? invoice.variableSymbol,
+          variableSymbol: requestedNumber,
           subtotal: calculation.subtotal,
           total: calculation.total,
           sellerName: company.name,
