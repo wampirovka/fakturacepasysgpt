@@ -30,7 +30,12 @@ export async function PATCH(
     return NextResponse.json({ error: "Nemáte oprávnění upravovat zákazníky." }, { status: 403 });
   }
 
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Neplatná data formuláře." }, { status: 400 });
+  }
   const name = text(body.name);
   if (!name) return NextResponse.json({ error: "Název / jméno zákazníka je povinné." }, { status: 400 });
 
@@ -39,6 +44,7 @@ export async function PATCH(
   });
   if (!existing) return NextResponse.json({ error: "Zákazník nebyl nalezen." }, { status: 404 });
 
+  try {
   const customer = await prisma.customer.update({
     where: { id },
     data: {
@@ -57,6 +63,10 @@ export async function PATCH(
   });
 
   return NextResponse.json({ customer });
+  } catch (error) {
+    console.error("PATCH /api/customers/[id] failed:", error);
+    return NextResponse.json({ error: "Nepodařilo se upravit zákazníka.", details: error instanceof Error ? error.message : String(error) }, { status: 500 });
+  }
 }
 
 export async function DELETE(
