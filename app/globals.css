@@ -371,6 +371,8 @@ button {
     border-bottom: 2px solid #17191c;
   }
 
+  .print-brand { display:flex; align-items:center; gap:12px; }
+  .print-logo { width:54px; height:54px; object-fit:contain; }
   .print-brand strong { display:block; font-size: 14pt; }
   .print-brand span { display:block; margin-top: 3px; color:#666; font-size:8.5pt; }
   .print-type { text-align:right; }
@@ -481,7 +483,10 @@ button {
     border-top:1px solid #ccc;
     color:#777;
     font-size:7pt;
+    align-items:flex-end;
   }
+  .print-qr-wrap { display:flex; flex-direction:column; align-items:center; gap:2px; margin-top:-34px; font-size:6pt; font-weight:700; letter-spacing:.08em; color:#555; }
+  .print-qr { width:72px; height:72px; image-rendering:auto; }
 
   .print-invoice,
   .print-invoice * { break-inside: avoid; }
