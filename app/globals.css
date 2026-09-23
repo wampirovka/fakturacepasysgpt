@@ -153,3 +153,12 @@ button {
   .customer-search { width: 100%; }
   .customer-actions { justify-content: flex-start; }
 }
+
+
+.ico-lookup { display: flex; gap: 8px; align-items: stretch; }
+.ico-lookup input { flex: 1; min-width: 0; }
+.ico-lookup .button { white-space: nowrap; }
+@media (max-width: 760px) {
+  .ico-lookup { flex-direction: column; }
+  .ico-lookup .button { width: 100%; }
+}
