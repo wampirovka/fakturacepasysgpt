@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { reserveNumber } from "@/lib/numbering";
+import { calculateInvoiceItems, parseInvoiceItems } from "@/lib/invoice-calculation";
 
 async function getMembership() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -21,18 +22,12 @@ export async function POST(request: Request) {
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Neplatná data formuláře." }, { status: 400 }); }
 
   const customerId = typeof body.customerId === "string" && body.customerId ? body.customerId : null;
-  const description = typeof body.description === "string" ? body.description.trim() : "";
-  const quantity = Number(body.quantity ?? 1);
-  const unitPrice = Number(body.unitPrice ?? 0);
   const paymentMethod = body.paymentMethod === "CASH" ? "CASH" : "BANK_TRANSFER";
   const issueDate = body.issueDate ? new Date(String(body.issueDate)) : new Date();
   const dueDays = Math.max(0, Math.min(365, Number(body.dueDays ?? 14)));
   const rawApplications = Array.isArray(body.advanceApplications) ? body.advanceApplications : [];
 
   if (!customerId) return NextResponse.json({ error: "Zákazník je u koncové faktury povinný." }, { status: 400 });
-  if (!description) return NextResponse.json({ error: "Popis položky je povinný." }, { status: 400 });
-  if (!Number.isFinite(quantity) || quantity <= 0) return NextResponse.json({ error: "Množství musí být větší než 0." }, { status: 400 });
-  if (!Number.isFinite(unitPrice) || unitPrice < 0) return NextResponse.json({ error: "Cena musí být 0 nebo vyšší." }, { status: 400 });
   if (Number.isNaN(issueDate.getTime())) return NextResponse.json({ error: "Neplatné datum vystavení." }, { status: 400 });
 
   const applications = rawApplications
@@ -55,7 +50,17 @@ export async function POST(request: Request) {
       });
       if (!customer) throw new Error("Vybraný zákazník nebyl nalezen.");
 
-      const total = Math.round(quantity * unitPrice * 100) / 100;
+      const rawItems = Array.isArray(body.items) ? body.items : [{
+        description: typeof body.description === "string" ? body.description : "",
+        quantity: Number(body.quantity ?? 1),
+        unit: "ks",
+        unitPrice: Number(body.unitPrice ?? 0),
+        discount: 0,
+        vatRate: null,
+      }];
+      const calculation = calculateInvoiceItems(parseInvoiceItems(rawItems), company.vatStatus === "VAT_PAYER");
+      const total = calculation.total;
+
       const dueDate = new Date(issueDate);
       dueDate.setDate(dueDate.getDate() + dueDays);
 
@@ -68,10 +73,6 @@ export async function POST(request: Request) {
       const checkedApplications: { advanceInvoiceId: string; amount: number }[] = [];
 
       for (const application of applications) {
-        if (!Number.isFinite(application.amount) || application.amount <= 0) {
-          throw new Error("Částka započtené zálohy musí být větší než 0.");
-        }
-
         const advance = await tx.invoice.findFirst({
           where: {
             id: application.advanceInvoiceId,
@@ -88,6 +89,9 @@ export async function POST(request: Request) {
         const available = Math.max(0, Number(advance.paidAmount) - alreadyApplied);
 
         if (available <= 0) throw new Error(`Záloha ${advance.number ?? ""} nemá žádnou částku k započtení.`);
+        if (!Number.isFinite(application.amount) || application.amount <= 0) {
+          throw new Error("Částka započtené zálohy musí být větší než 0.");
+        }
         if (application.amount > available + 0.005) {
           throw new Error(`U zálohy ${advance.number ?? ""} lze započíst nejvýše ${available.toFixed(2)} Kč.`);
         }
@@ -104,7 +108,7 @@ export async function POST(request: Request) {
       const status = paidAmount >= total - 0.005 ? "PAID" : paidAmount > 0 ? "PARTIALLY_PAID" : "ISSUED";
       const number = await reserveNumber(tx, company.id, "INVOICE", issueDate.getFullYear());
 
-      const created = await tx.invoice.create({
+      return tx.invoice.create({
         data: {
           companyId: company.id,
           customerId: customer.id,
@@ -116,7 +120,7 @@ export async function POST(request: Request) {
           taxableDate: issueDate,
           paymentMethod,
           variableSymbol: number,
-          subtotal: total,
+          subtotal: calculation.subtotal,
           total,
           paidAmount,
           sellerName: company.name,
@@ -138,15 +142,16 @@ export async function POST(request: Request) {
           buyerEmail: customer.email,
           buyerPhone: customer.phone,
           items: {
-            create: {
-              position: 1,
-              description,
-              quantity,
-              unit: "ks",
-              unitPrice,
-              lineTotal: total,
-              vatRate: null,
-            },
+            create: calculation.items.map((item, index) => ({
+              position: index + 1,
+              description: item.description,
+              quantity: item.quantity,
+              unit: item.unit,
+              unitPrice: item.unitPrice,
+              discount: item.discount,
+              lineTotal: item.lineTotal,
+              vatRate: item.vatRate,
+            })),
           },
           advanceApplications: {
             create: checkedApplications.map((item) => ({
@@ -156,8 +161,6 @@ export async function POST(request: Request) {
           },
         },
       });
-
-      return created;
     });
 
     return NextResponse.json({ invoice }, { status: 201 });
