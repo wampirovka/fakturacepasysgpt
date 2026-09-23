@@ -144,6 +144,7 @@ model Customer {
   updatedAt DateTime     @updatedAt
 
   company   Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invoices  Invoice[]
 
   @@index([companyId])
   @@index([companyId, name])
