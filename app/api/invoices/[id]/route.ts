@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { calculateInvoiceItems, parseInvoiceItems } from "@/lib/invoice-calculation";
 
 async function getMembership() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -45,11 +46,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return NextResponse.json({ error: "Nemáte oprávnění upravovat doklady." }, { status: 403 });
   }
 
-  const hasPayments = invoice.payments.length > 0;
-  const hasAdvanceApplications = invoice.advanceApplications.length > 0;
-  if (hasPayments || hasAdvanceApplications) {
+  if (invoice.payments.length > 0 || invoice.advanceApplications.length > 0) {
     return NextResponse.json({
-      error: hasAdvanceApplications
+      error: invoice.advanceApplications.length > 0
         ? "Doklad už obsahuje vypořádanou zálohu a nelze ho upravit."
         : "Doklad už má zaevidovanou úhradu a nelze ho upravit.",
     }, { status: 409 });
@@ -59,16 +58,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Neplatná data formuláře." }, { status: 400 }); }
 
   const customerId = typeof body.customerId === "string" && body.customerId ? body.customerId : null;
-  const description = typeof body.description === "string" ? body.description.trim() : "";
-  const quantity = Number(body.quantity ?? 1);
-  const unitPrice = Number(body.unitPrice ?? 0);
   const issueDate = body.issueDate ? new Date(String(body.issueDate)) : invoice.issueDate;
   const dueDays = Math.max(0, Math.min(365, Number(body.dueDays ?? 14)));
   const paymentMethod = body.paymentMethod === "CASH" ? "CASH" : "BANK_TRANSFER";
 
-  if (!description) return NextResponse.json({ error: "Popis položky je povinný." }, { status: 400 });
-  if (!Number.isFinite(quantity) || quantity <= 0) return NextResponse.json({ error: "Množství musí být větší než 0." }, { status: 400 });
-  if (!Number.isFinite(unitPrice) || unitPrice < 0) return NextResponse.json({ error: "Cena musí být 0 nebo vyšší." }, { status: 400 });
   if (Number.isNaN(issueDate.getTime())) return NextResponse.json({ error: "Neplatné datum vystavení." }, { status: 400 });
 
   try {
@@ -82,7 +75,15 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       if (invoice.type === "ADVANCE" && !customer) throw new Error("Zákazník je u zálohové faktury povinný.");
       if (customerId && !customer) throw new Error("Vybraný zákazník nebyl nalezen.");
 
-      const total = Math.round(quantity * unitPrice * 100) / 100;
+      const rawItems = Array.isArray(body.items) ? body.items : [{
+        description: typeof body.description === "string" ? body.description : "",
+        quantity: Number(body.quantity ?? 1),
+        unit: "ks",
+        unitPrice: Number(body.unitPrice ?? 0),
+        discount: 0,
+        vatRate: null,
+      }];
+      const calculation = calculateInvoiceItems(parseInvoiceItems(rawItems), company.vatStatus === "VAT_PAYER");
       const dueDate = new Date(issueDate);
       dueDate.setDate(dueDate.getDate() + dueDays);
 
@@ -95,8 +96,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
           taxableDate: issueDate,
           paymentMethod,
           variableSymbol: invoice.number ?? invoice.variableSymbol,
-          subtotal: total,
-          total,
+          subtotal: calculation.subtotal,
+          total: calculation.total,
           sellerName: company.name,
           sellerIco: company.ico,
           sellerDic: company.dic,
@@ -115,16 +116,22 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
           buyerCountry: customer?.country ?? null,
           buyerEmail: customer?.email ?? null,
           buyerPhone: customer?.phone ?? null,
+          items: {
+            deleteMany: {},
+            create: calculation.items.map((item, index) => ({
+              position: index + 1,
+              description: item.description,
+              quantity: item.quantity,
+              unit: item.unit,
+              unitPrice: item.unitPrice,
+              discount: item.discount,
+              lineTotal: item.lineTotal,
+              vatRate: item.vatRate,
+            })),
+          },
         },
+        include: { items: { orderBy: { position: "asc" } }, customer: true },
       });
-
-      const item = invoice.items[0];
-      if (item) {
-        await tx.invoiceItem.update({
-          where: { id: item.id },
-          data: { description, quantity, unitPrice, lineTotal: total },
-        });
-      }
 
       return updatedInvoice;
     });
