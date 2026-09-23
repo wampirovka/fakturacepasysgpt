@@ -112,12 +112,12 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
   return <AppShell><div className="content">
     <header className="page-header">
       <div><p className="eyebrow">{isAdvance?"Zálohová faktura":"Faktura"}</p><h1 className="page-title">{invoice.number??"Doklad"}</h1><p className="page-subtitle">{invoice.customer?.name??invoice.buyerName??"Neuvedený zákazník"}</p></div>
-      <div className="customer-actions"><Link className="button button-secondary" href={isAdvance?"/zalohy":"/faktury"}>← Zpět</Link>{!locked&&<button className="button button-secondary" onClick={()=>setEditing(!editing)}>{editing?"Zrušit úpravy":"Upravit"}</button>}{!locked&&<button className="button button-danger" onClick={remove}>Smazat</button>}</div>
+      <div className="customer-actions print-hide"><button className="button button-primary" onClick={()=>window.print()}>Tisk / PDF</button><Link className="button button-secondary" href={isAdvance?"/zalohy":"/faktury"}>← Zpět</Link>{!locked&&<button className="button button-secondary" onClick={()=>setEditing(!editing)}>{editing?"Zrušit úpravy":"Upravit"}</button>}{!locked&&<button className="button button-danger" onClick={remove}>Smazat</button>}</div>
     </header>
 
     {message&&<div className={message==="Doklad byl upraven."?"auth-success settings-message":"auth-error settings-message"}>{message}</div>}
 
-    {editing&&<section className="panel invoice-editor">
+    {editing&&<section className="panel invoice-editor print-hide">
       <div className="panel-header"><div><h2>Úprava dokladu</h2><span>Číslo lze upravit, pokud ještě nebyla zaevidována úhrada.</span></div></div>
       <div className="settings-grid">
         <Field label="Číslo dokladu" value={form.number} onChange={v=>setForm({...form,number:v})}/>
@@ -149,7 +149,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
       <div className="detail-total grand"><span>K úhradě</span><strong>{remaining.toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</strong></div>
     </section>
 
-    <section className="panel detail-card"><div className="panel-header"><div><h2>Úhrady</h2><span>{invoice.payments.length} záznamů</span></div></div>{invoice.payments.length?<div className="table-wrap"><table className="data-table"><thead><tr><th>Datum</th><th>Způsob</th><th>Poznámka</th><th className="amount">Částka</th></tr></thead><tbody>{invoice.payments.map(p=><tr key={p.id}><td>{new Date(p.paidAt).toLocaleDateString("cs-CZ")}</td><td>{methodText[p.method]??p.method}</td><td>{p.note??"-"}</td><td className="amount">{Number(p.amount).toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</td></tr>)}</tbody></table></div>:<p className="detail-empty">Zatím bez úhrady.</p>}</section>
+    <section className="panel detail-card print-hide"><div className="panel-header"><div><h2>Úhrady</h2><span>{invoice.payments.length} záznamů</span></div></div>{invoice.payments.length?<div className="table-wrap"><table className="data-table"><thead><tr><th>Datum</th><th>Způsob</th><th>Poznámka</th><th className="amount">Částka</th></tr></thead><tbody>{invoice.payments.map(p=><tr key={p.id}><td>{new Date(p.paidAt).toLocaleDateString("cs-CZ")}</td><td>{methodText[p.method]??p.method}</td><td>{p.note??"-"}</td><td className="amount">{Number(p.amount).toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</td></tr>)}</tbody></table></div>:<p className="detail-empty">Zatím bez úhrady.</p>}</section>
 
     {invoice.advanceApplications.length>0&&<section className="panel detail-card"><div className="panel-header"><div><h2>Vypořádání záloh</h2></div></div><div className="table-wrap"><table className="data-table"><thead><tr><th>Záloha</th><th className="amount">Započteno</th></tr></thead><tbody>{invoice.advanceApplications.map(a=><tr key={a.id}><td>{a.advanceInvoice.number??a.advanceInvoice.id}</td><td className="amount">− {Number(a.amount).toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</td></tr>)}</tbody></table></div></section>}
   </div></AppShell>;
