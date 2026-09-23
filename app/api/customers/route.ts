@@ -67,7 +67,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Nemáte oprávnění upravovat zákazníky." }, { status: 403 });
   }
 
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Neplatná data formuláře. Zkuste to znovu." }, { status: 400 });
+  }
+
   const name = text(body.name);
 
   if (!name) {
