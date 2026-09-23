@@ -77,7 +77,7 @@ export default function NastaveniPage() {
       return;
     }
 
-    const accountParts = account.split("/");
+    const accountParts = account.split("-");
     if (accountParts.length > 2 || accountParts.some((part) => part !== "" && !/^\d+$/.test(part))) {
       setMessage("Číslo účtu zadej jako 123456789 nebo 19-123456789.");
       return;
