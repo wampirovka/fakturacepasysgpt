@@ -76,7 +76,7 @@ export default function FakturyPage() {
       const data = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(data.error ?? "Fakturu se nepodařilo vytvořit.");
       setOpen(false); setMode("standard"); setForm(emptyForm); setAdvanceAmounts({});
-      await load(); setMessage(\`Faktura \${data.invoice.number} byla vytvořena.\`);
+      await load(); setMessage(`Faktura ${data.invoice.number} byla vytvořena.`);
     } catch (e) { setMessage(e instanceof Error ? e.message : "Fakturu se nepodařilo vytvořit."); }
     finally { setSaving(false); }
   }
