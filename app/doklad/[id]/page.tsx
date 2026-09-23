@@ -30,7 +30,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ customerId: "", issueDate: "", dueDays: "14", paymentMethod: "BANK_TRANSFER", items: [] as ItemForm[] });
+  const [form, setForm] = useState({ number: "", customerId: "", issueDate: "", dueDays: "14", paymentMethod: "BANK_TRANSFER", items: [] as ItemForm[] });
 
   useEffect(() => {
     params.then(({ id }) => {
@@ -48,6 +48,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
     const due = invoice.dueDate ? new Date(invoice.dueDate) : null;
     const dueDays = due ? Math.max(0, Math.round((due.getTime() - issue.getTime()) / 86400000)).toString() : "14";
     setForm({
+      number: invoice.number ?? "",
       customerId: invoice.customer?.id ?? "",
       issueDate: issue.toISOString().slice(0, 10),
       dueDays,
@@ -117,7 +118,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
     {message&&<div className={message==="Doklad byl upraven."?"auth-success settings-message":"auth-error settings-message"}>{message}</div>}
 
     {editing&&<section className="panel invoice-editor">
-      <div className="panel-header"><div><h2>Úprava dokladu</h2><span>Číslo dokladu zůstává stejné.</span></div></div>
+      <div className="panel-header"><div><h2>Úprava dokladu</h2><span>Číslo lze upravit, pokud ještě nebyla zaevidována úhrada.</span></div></div>
       <div className="settings-grid">
         <div className="auth-field"><label>Zákazník</label><select value={form.customerId} onChange={e=>setForm({...form,customerId:e.target.value})}><option value="">Vyberte zákazníka</option>{customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
         <Field label="Datum vystavení" type="date" value={form.issueDate} onChange={v=>setForm({...form,issueDate:v})}/>
