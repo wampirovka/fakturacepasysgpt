@@ -33,6 +33,7 @@ export async function GET(request: Request) {
 
   const query = new URL(request.url).searchParams.get("q")?.trim() ?? "";
 
+  try {
   const customers = await prisma.customer.findMany({
     where: {
       companyId: membership.companyId,
@@ -52,6 +53,10 @@ export async function GET(request: Request) {
   });
 
   return NextResponse.json({ customers });
+  } catch (error) {
+    console.error("GET /api/customers failed:", error);
+    return NextResponse.json({ error: "Nepodařilo se načíst zákazníky. Zkontrolujte databázi a Prisma migraci.", details: error instanceof Error ? error.message : String(error) }, { status: 500 });
+  }
 }
 
 export async function POST(request: Request) {
@@ -80,6 +85,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Název / jméno zákazníka je povinné." }, { status: 400 });
   }
 
+  try {
   const customer = await prisma.customer.create({
     data: {
       companyId: membership.companyId,
@@ -98,4 +104,8 @@ export async function POST(request: Request) {
   });
 
   return NextResponse.json({ customer }, { status: 201 });
+  } catch (error) {
+    console.error("POST /api/customers failed:", error);
+    return NextResponse.json({ error: "Nepodařilo se uložit zákazníka.", details: error instanceof Error ? error.message : String(error) }, { status: 500 });
+  }
 }
