@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 
 type Customer = { id: string; name: string; ico?: string | null; dic?: string | null; street?: string | null; city?: string | null; zip?: string | null; country?: string | null; email?: string | null; phone?: string | null };
@@ -25,6 +25,7 @@ const methodText: Record<string, string> = { BANK_TRANSFER: "Bankovní převod",
 
 export default function DokladDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [editing, setEditing] = useState(false);
@@ -59,6 +60,10 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
       paymentMethod: invoice.paymentMethod === "CASH" ? "CASH" : "BANK_TRANSFER",
     });
   }, [invoice]);
+
+  useEffect(() => {
+    if (invoice && searchParams.get("edit") === "1" && invoice.payments.length === 0 && invoice.advanceApplications.length === 0) setEditing(true);
+  }, [invoice, searchParams]);
 
   const isAdvance = invoice?.type === "ADVANCE";
   const isFinal = invoice?.advanceApplications?.length > 0;
