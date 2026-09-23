@@ -340,45 +340,151 @@ button {
 .print-invoice { display: none; }
 
 @media print {
-  .print-invoice {
-    display: block !important;
-    color: #111;
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 10pt;
+  @page { size: A4; margin: 12mm 14mm; }
+
+  .sidebar,
+  .mobile-header,
+  .page-header,
+  .content > .panel,
+  .print-hide,
+  .settings-message {
+    display: none !important;
   }
 
-  .print-invoice h1 { margin: 3px 0 0; font-size: 25pt; letter-spacing: -0.03em; }
-  .print-head { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 16px; border-bottom: 2px solid #111; }
-  .print-doc-label { font-size: 9pt; font-weight: 700; letter-spacing: .12em; }
-  .print-meta { display: grid; grid-template-columns: repeat(3, auto); gap: 24px; text-align: right; }
-  .print-meta span, .print-meta strong { display: block; }
-  .print-meta span { margin-bottom: 4px; color: #666; font-size: 8pt; }
-  .print-meta strong { font-size: 10pt; }
+  .main { margin-left: 0 !important; min-height: auto; }
+  .content { width: 100% !important; max-width: none !important; padding: 0 !important; }
 
-  .print-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 22px 0; }
-  .print-parties > div { min-height: 105px; padding: 14px 16px; border: 1px solid #d5d5d5; }
-  .print-parties span, .print-parties strong { display: block; }
-  .print-parties strong { margin: 6px 0; font-size: 11pt; }
-  .print-parties span:not(.print-label) { margin-top: 2px; color: #444; font-size: 9pt; }
-  .print-label { font-size: 7.5pt !important; font-weight: 700; letter-spacing: .1em; color: #666; }
+  .print-invoice {
+    display: block !important;
+    color: #17191c;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9.5pt;
+    line-height: 1.35;
+  }
 
-  .print-items { width: 100%; border-collapse: collapse; margin-top: 8px; }
-  .print-items th { padding: 9px 8px; border-bottom: 2px solid #222; text-align: left; font-size: 8pt; text-transform: uppercase; }
-  .print-items td { padding: 10px 8px; border-bottom: 1px solid #ddd; vertical-align: top; }
-  .print-items .right { text-align: right; white-space: nowrap; }
-  .print-items td:first-child { width: 45%; }
-  .print-items td strong, .print-items td small { display: block; }
-  .print-items td small { margin-top: 3px; color: #666; font-size: 8pt; }
+  .print-topline {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    min-height: 55px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #17191c;
+  }
 
-  .print-bottom { display: grid; grid-template-columns: 1fr 290px; gap: 40px; margin-top: 24px; align-items: start; }
-  .print-payment { padding-top: 8px; line-height: 1.7; }
-  .print-payment .print-label { margin-bottom: 7px; }
-  .print-totals { border-top: 1px solid #222; }
-  .print-totals > div { display: flex; justify-content: space-between; gap: 20px; padding: 7px 0; border-bottom: 1px solid #ddd; }
-  .print-totals .print-total-grand { margin-top: 4px; padding: 12px 0; border-bottom: 3px double #111; font-size: 13pt; }
-  .print-total-grand strong { font-size: 15pt; }
+  .print-brand strong { display:block; font-size: 14pt; }
+  .print-brand span { display:block; margin-top: 3px; color:#666; font-size:8.5pt; }
+  .print-type { text-align:right; }
+  .print-type span { display:block; color:#666; font-size:7.5pt; letter-spacing:.1em; }
+  .print-type strong { display:block; margin-top:3px; font-size:13pt; }
 
-  .print-footer { display: flex; justify-content: space-between; margin-top: 42px; padding-top: 8px; border-top: 1px solid #ccc; color: #777; font-size: 7.5pt; }
+  .print-head {
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    gap:20px;
+    padding:18px 0 15px;
+    border-bottom:1px solid #d0d0d0;
+  }
 
-  .print-invoice + * { display: none !important; }
+  .print-number-label { color:#666; font-size:7.5pt; letter-spacing:.08em; }
+  .print-head h1 { margin:2px 0 0; font-size:25pt; letter-spacing:-.03em; }
+  .print-meta { display:flex; gap:28px; text-align:right; }
+  .print-meta span, .print-meta strong { display:block; }
+  .print-meta span { color:#666; font-size:7.5pt; margin-bottom:3px; }
+  .print-meta strong { font-size:9.5pt; }
+
+  .print-parties {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+    margin:18px 0 22px;
+  }
+  .print-parties > div {
+    min-height:112px;
+    padding:13px 15px;
+    border:1px solid #d4d4d4;
+  }
+  .print-parties span, .print-parties strong { display:block; }
+  .print-parties strong { margin:5px 0 7px; font-size:10.5pt; }
+  .print-parties span:not(.print-label) { margin-top:2px; color:#444; font-size:8.5pt; }
+  .print-label { color:#666 !important; font-size:7pt !important; font-weight:700; letter-spacing:.1em; }
+
+  .print-items {
+    width:100%;
+    border-collapse:collapse;
+    table-layout:fixed;
+  }
+  .print-items th {
+    padding:8px 7px;
+    border-top:2px solid #17191c;
+    border-bottom:1px solid #17191c;
+    text-align:left;
+    font-size:7.5pt;
+    text-transform:uppercase;
+  }
+  .print-items td {
+    padding:9px 7px;
+    border-bottom:1px solid #e1e1e1;
+    vertical-align:top;
+  }
+  .print-items th:first-child, .print-items td:first-child { width:42%; }
+  .print-items .qty, .print-items th.qty { width:11%; text-align:center; }
+  .print-items .unit, .print-items th.unit { width:8%; text-align:center; }
+  .print-items .vat, .print-items th.vat { width:9%; text-align:center; }
+  .print-items .right { text-align:right; white-space:nowrap; }
+  .print-items td strong, .print-items td small { display:block; }
+  .print-items td small { margin-top:2px; color:#666; font-size:7.5pt; }
+
+  .print-summary {
+    display:grid;
+    grid-template-columns:1fr 300px;
+    gap:40px;
+    margin-top:24px;
+    align-items:start;
+  }
+  .print-payment { padding-top:3px; line-height:1.65; }
+  .print-payment .print-label { margin-bottom:7px; }
+  .print-note { margin-top:10px; font-weight:700; }
+
+  .print-totals { border-top:1px solid #17191c; }
+  .print-totals > div {
+    display:flex;
+    justify-content:space-between;
+    gap:20px;
+    padding:7px 0;
+    border-bottom:1px solid #ddd;
+  }
+  .print-settlement { color:#444; }
+  .print-total-grand {
+    margin-top:4px;
+    padding:12px 0 !important;
+    border-top:2px solid #17191c !important;
+    border-bottom:3px double #17191c !important;
+    font-size:12.5pt;
+  }
+  .print-total-grand strong { font-size:15pt; }
+
+  .print-note-block {
+    margin-top:24px;
+    padding:10px 0;
+    border-top:1px solid #ddd;
+    border-bottom:1px solid #ddd;
+  }
+  .print-note-block > div { margin-top:5px; white-space:pre-wrap; }
+
+  .print-footer {
+    display:flex;
+    justify-content:space-between;
+    gap:20px;
+    margin-top:34px;
+    padding-top:8px;
+    border-top:1px solid #ccc;
+    color:#777;
+    font-size:7pt;
+  }
+
+  .print-invoice,
+  .print-invoice * { break-inside: avoid; }
+
+  .print-items tr { break-inside: avoid; }
 }
