@@ -335,3 +335,50 @@ button {
     text-decoration: none !important;
   }
 }
+
+
+.print-invoice { display: none; }
+
+@media print {
+  .print-invoice {
+    display: block !important;
+    color: #111;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10pt;
+  }
+
+  .print-invoice h1 { margin: 3px 0 0; font-size: 25pt; letter-spacing: -0.03em; }
+  .print-head { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 16px; border-bottom: 2px solid #111; }
+  .print-doc-label { font-size: 9pt; font-weight: 700; letter-spacing: .12em; }
+  .print-meta { display: grid; grid-template-columns: repeat(3, auto); gap: 24px; text-align: right; }
+  .print-meta span, .print-meta strong { display: block; }
+  .print-meta span { margin-bottom: 4px; color: #666; font-size: 8pt; }
+  .print-meta strong { font-size: 10pt; }
+
+  .print-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 22px 0; }
+  .print-parties > div { min-height: 105px; padding: 14px 16px; border: 1px solid #d5d5d5; }
+  .print-parties span, .print-parties strong { display: block; }
+  .print-parties strong { margin: 6px 0; font-size: 11pt; }
+  .print-parties span:not(.print-label) { margin-top: 2px; color: #444; font-size: 9pt; }
+  .print-label { font-size: 7.5pt !important; font-weight: 700; letter-spacing: .1em; color: #666; }
+
+  .print-items { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  .print-items th { padding: 9px 8px; border-bottom: 2px solid #222; text-align: left; font-size: 8pt; text-transform: uppercase; }
+  .print-items td { padding: 10px 8px; border-bottom: 1px solid #ddd; vertical-align: top; }
+  .print-items .right { text-align: right; white-space: nowrap; }
+  .print-items td:first-child { width: 45%; }
+  .print-items td strong, .print-items td small { display: block; }
+  .print-items td small { margin-top: 3px; color: #666; font-size: 8pt; }
+
+  .print-bottom { display: grid; grid-template-columns: 1fr 290px; gap: 40px; margin-top: 24px; align-items: start; }
+  .print-payment { padding-top: 8px; line-height: 1.7; }
+  .print-payment .print-label { margin-bottom: 7px; }
+  .print-totals { border-top: 1px solid #222; }
+  .print-totals > div { display: flex; justify-content: space-between; gap: 20px; padding: 7px 0; border-bottom: 1px solid #ddd; }
+  .print-totals .print-total-grand { margin-top: 4px; padding: 12px 0; border-bottom: 3px double #111; font-size: 13pt; }
+  .print-total-grand strong { font-size: 15pt; }
+
+  .print-footer { display: flex; justify-content: space-between; margin-top: 42px; padding-top: 8px; border-top: 1px solid #ccc; color: #777; font-size: 7.5pt; }
+
+  .print-invoice + * { display: none !important; }
+}
