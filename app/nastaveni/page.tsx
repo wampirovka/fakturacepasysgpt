@@ -68,6 +68,43 @@ export default function NastaveniPage() {
     setMessage("");
   }
 
+  function generateIban() {
+    const bankCode = (company.bankCode ?? "").replace(/\s/g, "");
+    const account = (company.bankAccount ?? "").replace(/\s/g, "");
+
+    if (!/^\d{4}$/.test(bankCode)) {
+      setMessage("Kód banky musí obsahovat přesně 4 číslice.");
+      return;
+    }
+
+    const accountParts = account.split("/");
+    if (accountParts.length > 2 || accountParts.some((part) => part !== "" && !/^\d+$/.test(part))) {
+      setMessage("Číslo účtu zadej jako 123456789 nebo 19-123456789.");
+      return;
+    }
+
+    const prefix = accountParts.length === 2 ? accountParts[0] : "";
+    const number = accountParts.length === 2 ? accountParts[1] : accountParts[0];
+
+    if (prefix.length > 6) {
+      setMessage("Předčíslí účtu může mít maximálně 6 číslic.");
+      return;
+    }
+
+    if (!number || number.length > 10) {
+      setMessage("Číslo účtu musí obsahovat 1 až 10 číslic.");
+      return;
+    }
+
+    const bban = bankCode + prefix.padStart(6, "0") + number.padStart(10, "0");
+    const remainder = BigInt(bban + "28200") % 97n;
+    const checkDigits = String(98n - remainder).padStart(2, "0");
+    const iban = "CZ" + checkDigits + bban;
+
+    setCompany((current) => ({ ...current, iban }));
+    setMessage("IBAN byl automaticky vypočítán z čísla účtu a kódu banky.");
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
@@ -143,7 +180,25 @@ export default function NastaveniPage() {
               <Field label="Logo URL" value={company.logoUrl ?? ""} onChange={(value) => update("logoUrl", value)} />
               <Field label="Číslo účtu" value={company.bankAccount ?? ""} onChange={(value) => update("bankAccount", value)} />
               <Field label="Kód banky" value={company.bankCode ?? ""} onChange={(value) => update("bankCode", value)} />
-              <Field label="IBAN" value={company.iban ?? ""} onChange={(value) => update("iban", value)} />
+              <div className="auth-field">
+                <label htmlFor="iban">IBAN</label>
+                <input
+                  id="iban"
+                  type="text"
+                  value={company.iban ?? ""}
+                  placeholder="CZ..."
+                  onChange={(event) => update("iban", event.target.value.toUpperCase().replace(/\s/g, ""))}
+                />
+                <button
+                  className="button"
+                  type="button"
+                  style={{ marginTop: 8 }}
+                  onClick={generateIban}
+                  disabled={!company.bankAccount || !company.bankCode}
+                >
+                  Vygenerovat IBAN z účtu
+                </button>
+              </div>
               <div className="auth-field">
                 <label htmlFor="vatStatus">Režim DPH</label>
                 <select id="vatStatus" value={company.vatStatus} onChange={(event) => update("vatStatus", event.target.value)}>
