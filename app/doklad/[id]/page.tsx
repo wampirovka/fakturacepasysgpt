@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import QRCode from "qrcode";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 
@@ -27,6 +28,8 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [vatPayer, setVatPayer] = useState(false);
+  const [company, setCompany] = useState<{logoUrl?: string|null; bankAccount?: string|null; bankCode?: string|null; iban?: string|null}>({});
+  const [qrCode, setQrCode] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
@@ -37,7 +40,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
       Promise.all([fetch("/api/invoices/" + id), fetch("/api/customers"), fetch("/api/company/me")]).then(async ([ir, cr, companyResponse]) => {
         const data = await ir.json().catch(() => ({})); const cd = await cr.json().catch(() => ({})); const company = await companyResponse.json().catch(() => ({}));
         if (!ir.ok) { setMessage(data.error ?? "Doklad se nepodařilo načíst."); return; }
-        setInvoice(data.invoice); setCustomers(cd.customers ?? []); setVatPayer(company.company?.vatStatus === "VAT_PAYER");
+        setInvoice(data.invoice); setCustomers(cd.customers ?? []); setVatPayer(company.company?.vatStatus === "VAT_PAYER"); setCompany(company.company ?? {});
       }).catch(() => setMessage("Doklad se nepodařilo načíst."));
     });
   }, [params]);
@@ -109,6 +112,22 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
   const detailNet=invoice.items.reduce((sum,x)=>sum+Number(x.lineTotal),0);
   const detailVat=invoice.items.reduce((sum,x)=>sum+Number(x.lineTotal)*(Number(x.vatRate)||0)/100,0);
 
+  useEffect(() => {
+    if (!invoice) return;
+    const account = company.iban || (company.bankAccount && company.bankCode ? `${company.bankAccount}/${company.bankCode}` : "");
+    if (!account || remaining <= 0) { setQrCode(null); return; }
+    const parts = [
+      "SPD*1.0",
+      `ACC:${account}`,
+      `AM:${remaining.toFixed(2)}`,
+      `CC:CZK`,
+      `X-VS:${invoice.variableSymbol ?? invoice.number ?? ""}`,
+    ];
+    QRCode.toDataURL(parts.join("*"), { width: 150, margin: 1, errorCorrectionLevel: "M" })
+      .then(setQrCode)
+      .catch(() => setQrCode(null));
+  }, [invoice, company, remaining]);
+
   return <AppShell><div className="content">
     <header className="page-header">
       <div><p className="eyebrow">{isAdvance?"Zálohová faktura":"Faktura"}</p><h1 className="page-title">{invoice.number??"Doklad"}</h1><p className="page-subtitle">{invoice.customer?.name??invoice.buyerName??"Neuvedený zákazník"}</p></div>
@@ -153,7 +172,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
 
     <section className="print-invoice">
       <div className="print-topline">
-        <div className="print-brand"><strong>{invoice.sellerName ?? "Fakturace"}</strong><span>{invoice.sellerStreet ?? ""}{invoice.sellerCity ? (invoice.sellerStreet ? ", " : "") + invoice.sellerCity : ""}</span></div>
+        <div className="print-brand">{company.logoUrl && <img className="print-logo" src={company.logoUrl} alt="" />}<div><strong>{invoice.sellerName ?? "Fakturace"}</strong><span>{invoice.sellerStreet ?? ""}{invoice.sellerCity ? (invoice.sellerStreet ? ", " : "") + invoice.sellerCity : ""}</span></div></div>
         <div className="print-type"><span>{vatPayer ? "DAŇOVÝ DOKLAD" : "FAKTURA"}</span><strong>{isAdvance ? "ZÁLOHOVÁ FAKTURA" : "FAKTURA"}</strong></div>
       </div>
 
@@ -195,7 +214,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
       </div>
 
       {invoice.note && <div className="print-note-block"><span className="print-label">POZNÁMKA</span><div>{invoice.note}</div></div>}
-      <div className="print-footer"><span>{invoice.sellerName ?? "Fakturace"}{invoice.sellerIco ? " · IČO " + invoice.sellerIco : ""}{invoice.sellerDic ? " · DIČ " + invoice.sellerDic : ""}</span><span>{statusText[invoice.status] ?? invoice.status}</span></div>
+      <div className="print-footer"><span>{invoice.sellerName ?? "Fakturace"}{invoice.sellerIco ? " · IČO " + invoice.sellerIco : ""}{invoice.sellerDic ? " · DIČ " + invoice.sellerDic : ""}</span><div className="print-qr-wrap">{qrCode ? <><img className="print-qr" src={qrCode} alt="QR platba" /><span>QR PLATBA</span></> : <span>Bankovní údaje nejsou nastavené</span>} </div><span>{statusText[invoice.status] ?? invoice.status}</span></div>
     </section>
     {invoice.advanceApplications.length>0&&<section className="panel detail-card"><div className="panel-header"><div><h2>Vypořádání záloh</h2></div></div><div className="table-wrap"><table className="data-table"><thead><tr><th>Záloha</th><th className="amount">Započteno</th></tr></thead><tbody>{invoice.advanceApplications.map(a=><tr key={a.id}><td>{a.advanceInvoice.number??a.advanceInvoice.id}</td><td className="amount">− {Number(a.amount).toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</td></tr>)}</tbody></table></div></section>}
   </div></AppShell>;
