@@ -58,16 +58,25 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Neplatná data formuláře." }, { status: 400 }); }
 
   const customerId = typeof body.customerId === "string" && body.customerId ? body.customerId : null;
+  const requestedNumber = typeof body.number === "string" ? body.number.trim() : invoice.number;
   const issueDate = body.issueDate ? new Date(String(body.issueDate)) : invoice.issueDate;
   const dueDays = Math.max(0, Math.min(365, Number(body.dueDays ?? 14)));
   const paymentMethod = body.paymentMethod === "CASH" ? "CASH" : "BANK_TRANSFER";
 
   if (Number.isNaN(issueDate.getTime())) return NextResponse.json({ error: "Neplatné datum vystavení." }, { status: 400 });
+  if (!requestedNumber) return NextResponse.json({ error: "Číslo dokladu je povinné." }, { status: 400 });
+  if (requestedNumber.length > 50) return NextResponse.json({ error: "Číslo dokladu je příliš dlouhé." }, { status: 400 });
 
   try {
     const updated = await prisma.$transaction(async (tx) => {
       const company = await tx.company.findUnique({ where: { id: membership.companyId } });
       if (!company) throw new Error("Firma nebyla nalezena.");
+
+      const existingNumber = await tx.invoice.findFirst({
+        where: { companyId: membership.companyId, number: requestedNumber, NOT: { id: invoice.id } },
+        select: { id: true },
+      });
+      if (existingNumber) throw new Error(`Číslo dokladu ${requestedNumber} už je použité.`);
 
       const customer = customerId
         ? await tx.customer.findFirst({ where: { id: customerId, companyId: company.id, isActive: true } })
