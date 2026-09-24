@@ -26,7 +26,20 @@ export async function GET() {
     orderBy: [{ issueDate: "desc" }, { createdAt: "desc" }],
   });
 
-  return NextResponse.json({ advances: advances.map(advance => ({ ...advance, status: effectiveInvoiceStatus(advance) })) });
+  return NextResponse.json({
+    advances: advances.map(advance => {
+      const appliedAmount = advance.appliedToFinalInvoices.reduce((sum, item) => sum + Number(item.amount), 0);
+      const availableToApply = Math.max(0, Number(advance.paidAmount) - appliedAmount);
+      const baseStatus = effectiveInvoiceStatus(advance);
+      const settlementStatus =
+        appliedAmount <= 0.005
+          ? "UNSETTLED"
+          : availableToApply <= 0.005
+            ? "SETTLED"
+            : "PARTIALLY_SETTLED";
+      return { ...advance, status: baseStatus, appliedAmount, availableToApply, settlementStatus };
+    }),
+  });
 }
 
 export async function POST(request: Request) {
