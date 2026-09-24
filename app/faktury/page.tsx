@@ -181,7 +181,7 @@ export default function FakturyPage() {
       </form>}
 
       <section className="panel"><div className="panel-header"><div><h2>Seznam faktur</h2><span>{invoices.length} dokladů</span></div></div>
-        <div className="table-wrap"><table className="data-table"><thead><tr><th>Číslo</th><th>Typ</th><th>Zákazník</th><th>Vystavení</th><th>Splatnost</th><th>Stav</th><th className="amount">Částka</th></tr></thead>
+        <div className="table-wrap"><table className="data-table"><thead><tr><th>Číslo</th><th>Typ</th><th>Zákazník</th><th>Vystavení</th><th>Splatnost</th><th>Stav</th><th></th><th className="amount">Částka</th></tr></thead>
         <tbody>{invoices.length ? invoices.map(i => <tr key={i.id}>
           <td><strong>{i.number ?? "Rozpracovaná"}</strong></td><td>{i.type === "ADVANCE" ? "Zálohová" : i.type === "CORRECTIVE" ? "Opravná" : "Faktura"}</td><td>{i.customer?.name ?? "Neuvedený zákazník"}</td>
           <td>{new Date(i.issueDate).toLocaleDateString("cs-CZ")}</td><td>{i.dueDate ? new Date(i.dueDate).toLocaleDateString("cs-CZ") : "-"}</td><td><span className="status status-due">{statusText[i.status] ?? i.status}</span></td>
