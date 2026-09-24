@@ -36,6 +36,10 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ number: "", customerId: "", issueDate: "", dueDays: "14", paymentMethod: "BANK_TRANSFER", items: [] as ItemForm[] });
+  const [availableAdvances, setAvailableAdvances] = useState<any[]>([]);
+  const [selectedAdvanceId, setSelectedAdvanceId] = useState("");
+  const [advanceAmount, setAdvanceAmount] = useState("");
+  const [applyingAdvance, setApplyingAdvance] = useState(false);
 
   useEffect(() => {
     params.then(({ id }) => {
@@ -46,6 +50,16 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
       }).catch(() => setMessage("Doklad se nepodařilo načíst."));
     });
   }, [params]);
+
+  useEffect(() => {
+    if (!invoice || invoice.type !== "INVOICE" || !invoice.customer?.id) { setAvailableAdvances([]); return; }
+    fetch("/api/advances")
+      .then(r => r.json())
+      .then(data => setAvailableAdvances((data.advances ?? []).filter((a: any) =>
+        a.customerId === invoice.customer?.id && Number(a.availableToApply ?? 0) > 0 && a.status !== "CANCELLED"
+      )))
+      .catch(() => setAvailableAdvances([]));
+  }, [invoice?.id, invoice?.type, invoice?.customer?.id]);
 
   useEffect(() => {
     if (!invoice) return;
@@ -86,6 +100,26 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
   }
   function addItem() { setForm(current=>({...current,items:[...current.items,{description:"",quantity:"1",unit:"ks",unitPrice:"",discount:"0",vatRate:"21"}]})); }
   function removeItem(index:number) { setForm(current=>({...current,items:current.items.length===1?current.items:current.items.filter((_,i)=>i!==index)})); }
+
+  async function applyAdvance() {
+    if (!invoice || !selectedAdvanceId) return;
+    const amount = Number(advanceAmount);
+    if (!Number.isFinite(amount) || amount <= 0) { setMessage("Zadejte částku zálohy větší než 0."); return; }
+    setApplyingAdvance(true); setMessage("");
+    try {
+      const r = await fetch("/api/invoices/" + invoice.id, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ advanceInvoiceId: selectedAdvanceId, amount }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) { setMessage(data.error ?? "Zálohu se nepodařilo uplatnit."); return; }
+      const refreshed = await fetch("/api/invoices/" + invoice.id);
+      const refreshedData = await refreshed.json().catch(() => ({}));
+      if (refreshed.ok) setInvoice(refreshedData.invoice);
+      setSelectedAdvanceId(""); setAdvanceAmount(""); setMessage("Záloha byla uplatněna.");
+    } catch { setMessage("Zálohu se nepodařilo uplatnit."); }
+    finally { setApplyingAdvance(false); }
+  }
 
   async function save() {
     if (!invoice) return;
@@ -230,6 +264,17 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
       {invoice.note && <div className="print-note-block"><span className="print-label">POZNÁMKA</span><div>{invoice.note}</div></div>}
       <div className="print-footer"><span>{invoice.sellerName ?? "Fakturace"}{invoice.sellerIco ? " · IČO " + invoice.sellerIco : ""}{invoice.sellerDic ? " · DIČ " + invoice.sellerDic : ""}</span><div className="print-qr-wrap">{qrCode ? <><img className="print-qr" src={qrCode} alt="QR platba" /><span>QR PLATBA</span></> : <span>Bankovní údaje nejsou nastavené</span>} </div><span>{statusText[invoice.status] ?? invoice.status}</span></div>
     </section>
+    {!isAdvance && !isCorrective && invoice.status !== "PAID" && availableAdvances.length>0 && <section className="panel detail-card print-hide">
+      <div className="panel-header"><div><h2>Uplatnit zálohu</h2><span>Uplatnit již uhrazenou zálohu na tuto existující fakturu.</span></div></div>
+      <div className="form-grid">
+        <div className="auth-field"><label>Záloha</label><select value={selectedAdvanceId} onChange={e => { setSelectedAdvanceId(e.target.value); const a=availableAdvances.find((x:any)=>x.id===e.target.value); setAdvanceAmount(a ? Number(a.availableToApply).toFixed(2) : ""); }}>
+          <option value="">Vyberte zálohu</option>
+          {availableAdvances.map((a:any)=><option key={a.id} value={a.id}>{a.number ?? a.id} · k uplatnění {Number(a.availableToApply).toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</option>)}
+        </select></div>
+        <Field label="Částka k uplatnění" value={advanceAmount} onChange={setAdvanceAmount} type="number" />
+        <div className="customer-actions"><button className="button button-primary" onClick={applyAdvance} disabled={applyingAdvance || !selectedAdvanceId}>{applyingAdvance ? "Uplatňuji…" : "Uplatnit zálohu"}</button></div>
+      </div>
+    </section>}
     {invoice.advanceApplications.length>0&&<section className="panel detail-card"><div className="panel-header"><div><h2>Vypořádání záloh</h2><span>Uhrazené zálohy započtené do tohoto vyúčtování.</span></div></div><div className="table-wrap"><table className="data-table"><thead><tr><th>Záloha</th><th className="amount">Uplatněno</th></tr></thead><tbody>{invoice.advanceApplications.map(a=><tr key={a.id}><td><Link href={`/doklad/${a.advanceInvoice.id}`}>{a.advanceInvoice.number??a.advanceInvoice.id}</Link></td><td className="amount">− {Number(a.amount).toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</td></tr>)}</tbody></table></div></section>}
   </div></AppShell>;
 }
