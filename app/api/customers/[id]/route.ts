@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 
 async function getMembership() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -71,7 +72,8 @@ export async function PATCH(
   if (!existing) return NextResponse.json({ error: "Zákazník nebyl nalezen." }, { status: 404 });
 
   try {
-  const customer = await prisma.customer.update({
+  const customer = await prisma.$transaction(async tx => {
+    const updated = await tx.customer.update({
     where: { id },
     data: {
       type: body.type === "PERSON" ? "PERSON" : "BUSINESS",
