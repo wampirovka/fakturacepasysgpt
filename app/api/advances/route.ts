@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
   if (!customerId) return NextResponse.json({ error: "Zákazník je u zálohové faktury povinný." }, { status: 400 });
   if (!description && !Array.isArray(body.items)) return NextResponse.json({ error: "Popis zálohy je povinný." }, { status: 400 });
-  if (!Number.isFinite(amount) || amount < 0) return NextResponse.json({ error: "Částka zálohy není platná." }, { status: 400 });
+  if (!Array.isArray(body.items) && (!Number.isFinite(amount) || amount <= 0)) return NextResponse.json({ error: "Částka zálohy musí být větší než 0." }, { status: 400 });
   if (Number.isNaN(issueDate.getTime())) return NextResponse.json({ error: "Neplatné datum vystavení." }, { status: 400 });
 
   try {
