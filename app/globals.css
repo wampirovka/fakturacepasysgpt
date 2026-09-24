@@ -747,3 +747,57 @@ button {
   .chart-bars { height:170px; }
   .chart-bar { width:6px; }
 }
+
+
+/* Filtry a responzivní tabulky dokladů */
+.document-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  background: #fafafa;
+}
+.document-filters .customer-search {
+  flex: 1 1 280px;
+  width: auto;
+}
+.document-filters select {
+  min-height: 40px;
+  min-width: 170px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 0 11px;
+  outline: none;
+}
+.document-filters select:focus,
+.document-filters .customer-search:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.status-paid { background: #ecfdf3; color: var(--success); }
+.status-due { background: #fff7ed; color: var(--warning); }
+.status-overdue { background: #fef2f2; color: var(--danger); }
+.status-muted { background: #f3f4f6; color: #6b7280; }
+
+@media (max-width: 760px) {
+  .document-filters {
+    flex-direction: column;
+  }
+  .document-filters .customer-search,
+  .document-filters select {
+    width: 100%;
+    min-width: 0;
+  }
+  .data-table th,
+  .data-table td {
+    padding: 11px 12px;
+  }
+  .row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
