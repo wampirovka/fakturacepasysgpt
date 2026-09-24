@@ -105,29 +105,31 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
     router.push(isAdvance?"/zalohy":"/faktury");
   }
 
+  useEffect(() => {
+    if (!invoice) return;
+    const total = Number(invoice.total);
+    const paid = Number(invoice.paidAmount);
+    const remaining = Math.max(0, total - paid);
+    const account = company.iban || (company.bankAccount && company.bankCode ? company.bankAccount + "/" + company.bankCode : "");
+    if (!account || remaining <= 0) { setQrCode(null); return; }
+    const parts = [
+      "SPD*1.0",
+      `ACC:${account}`,
+      `AM:${remaining.toFixed(2)}`,
+      "CC:CZK",
+      `X-VS:${invoice.variableSymbol ?? invoice.number ?? ""}`,
+    ];
+    QRCode.toDataURL(parts.join("*"), { width: 150, margin: 1, errorCorrectionLevel: "M" })
+      .then(setQrCode)
+      .catch(() => setQrCode(null));
+  }, [invoice, company]);
+
   if (!invoice) return <AppShell><div className="content"><Link className="button button-secondary" href="/faktury">← Zpět</Link>{message&&<div className="auth-error settings-message">{message}</div>}</div></AppShell>;
 
   const total=Number(invoice.total); const paid=Number(invoice.paidAmount);
   const applied=invoice.advanceApplications.reduce((sum,x)=>sum+Number(x.amount),0); const remaining=Math.max(0,total-paid);
   const detailNet=invoice.items.reduce((sum,x)=>sum+Number(x.lineTotal),0);
   const detailVat=invoice.items.reduce((sum,x)=>sum+Number(x.lineTotal)*(Number(x.vatRate)||0)/100,0);
-
-  useEffect(() => {
-    if (!invoice) return;
-    const account = company.iban || (company.bankAccount && company.bankCode ? `${company.bankAccount}/${company.bankCode}` : "");
-    if (!account || remaining <= 0) { setQrCode(null); return; }
-    const parts = [
-      "SPD*1.0",
-      `ACC:${account}`,
-      `AM:${remaining.toFixed(2)}`,
-      `CC:CZK`,
-      `X-VS:${invoice.variableSymbol ?? invoice.number ?? ""}`,
-    ];
-    QRCode.toDataURL(parts.join("*"), { width: 150, margin: 1, errorCorrectionLevel: "M" })
-      .then(setQrCode)
-      .catch(() => setQrCode(null));
-  }, [invoice, company, remaining]);
-
   return <AppShell><div className="content">
     <header className="page-header">
       <div><p className="eyebrow">{isAdvance?"Zálohová faktura":"Faktura"}</p><h1 className="page-title">{invoice.number??"Doklad"}</h1><p className="page-subtitle">{invoice.customer?.name??invoice.buyerName??"Neuvedený zákazník"}</p></div>
