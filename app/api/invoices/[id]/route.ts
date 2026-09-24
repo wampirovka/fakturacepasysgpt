@@ -285,7 +285,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       });
 
       return created;
-    });
+    }, { isolationLevel: "Serializable" });
 
     return NextResponse.json({ application }, { status: 201 });
   } catch (error) {
