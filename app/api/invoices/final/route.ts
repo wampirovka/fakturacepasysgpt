@@ -171,8 +171,10 @@ export async function POST(request: Request) {
           const applied = advance.appliedToFinalInvoices.reduce((sum, item) => sum + Number(item.amount), 0);
           const paid = Number(advance.paidAmount);
           const status = paid >= Number(advance.total) - 0.005
-            ? (applied >= paid - 0.005 ? "PAID" : "PARTIALLY_PAID")
-            : (paid > 0.005 ? "PARTIALLY_PAID" : "ISSUED");
+            ? "PAID"
+            : paid > 0.005
+              ? "PARTIALLY_PAID"
+              : "ISSUED";
           await tx.invoice.update({ where: { id: advance.id }, data: { status } });
         }
       }
