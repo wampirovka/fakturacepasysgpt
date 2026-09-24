@@ -18,6 +18,7 @@ type Invoice = {
   sellerName: string | null; sellerIco: string | null; sellerDic: string | null; sellerStreet: string | null; sellerCity: string | null; sellerZip: string | null; sellerCountry: string | null;
   sellerEmail: string | null; sellerPhone: string | null; buyerName: string | null; buyerIco: string | null; buyerDic: string | null; buyerStreet: string | null; buyerCity: string | null; buyerZip: string | null;
   buyerCountry: string | null; buyerEmail: string | null; buyerPhone: string | null; customer: Customer | null; items: Item[]; payments: Payment[]; advanceApplications: Application[];
+  correctiveOf: { id: string; number: string | null } | null; corrections: { id: string; number: string | null; total: string | number }[];
 };
 
 const statusText: Record<string, string> = { ISSUED: "Vystavená", PAID: "Uhrazená", PARTIALLY_PAID: "Částečně uhrazená", OVERDUE: "Po splatnosti", DRAFT: "Rozpracovaná", CANCELLED: "Stornovaná" };
@@ -69,8 +70,9 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
   }, [invoice, searchParams]);
 
   const isAdvance = invoice?.type === "ADVANCE";
+  const isCorrective = invoice?.type === "CORRECTIVE";
   const isFinal = invoice?.advanceApplications?.length > 0;
-  const locked = Boolean(invoice && (invoice.payments.length > 0 || isFinal));
+  const locked = Boolean(invoice && (invoice.payments.length > 0 || isFinal || isCorrective));
 
   const calculation = useMemo(() => form.items.reduce((acc, item) => {
     const qty=Number(item.quantity)||0, price=Number(item.unitPrice)||0, discount=Number(item.discount)||0;
@@ -133,7 +135,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
   const detailVat=invoice.items.reduce((sum,x)=>sum+Number(x.lineTotal)*(Number(x.vatRate)||0)/100,0);
   return <AppShell><div className="content">
     <header className="page-header">
-      <div><p className="eyebrow">{isAdvance?"Zálohová faktura":"Faktura"}</p><h1 className="page-title">{invoice.number??"Doklad"}</h1><p className="page-subtitle">{invoice.customer?.name??invoice.buyerName??"Neuvedený zákazník"}</p></div>
+      <div><p className="eyebrow">{isCorrective?"Opravný doklad":isAdvance?"Zálohová faktura":"Faktura"}</p><h1 className="page-title">{invoice.number??"Doklad"}</h1><p className="page-subtitle">{invoice.customer?.name??invoice.buyerName??"Neuvedený zákazník"}</p></div>
       <div className="customer-actions print-hide"><button className="button button-primary" onClick={()=>window.print()}>Tisk / PDF</button><Link className="button button-secondary" href={isAdvance?"/zalohy":"/faktury"}>← Zpět</Link>{!locked&&<button className="button button-secondary" onClick={()=>setEditing(!editing)}>{editing?"Zrušit úpravy":"Upravit"}</button>}{!locked&&<button className="button button-danger" onClick={remove}>Smazat</button>}</div>
     </header>
 
@@ -161,6 +163,8 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
 
     <section className="panel detail-card"><div className="party-grid"><div><h3>Dodavatel</h3><strong>{invoice.sellerName??"-"}</strong><span>{invoice.sellerIco?"IČO "+invoice.sellerIco:""}</span><span>{invoice.sellerDic?"DIČ "+invoice.sellerDic:""}</span><span>{[invoice.sellerStreet,invoice.sellerZip,invoice.sellerCity].filter(Boolean).join(", ")}</span><span>{invoice.sellerEmail??""}</span></div><div><h3>Odběratel</h3><strong>{invoice.buyerName??"-"}</strong><span>{invoice.buyerIco?"IČO "+invoice.buyerIco:""}</span><span>{invoice.buyerDic?"DIČ "+invoice.buyerDic:""}</span><span>{[invoice.buyerStreet,invoice.buyerZip,invoice.buyerCity].filter(Boolean).join(", ")}</span><span>{invoice.buyerEmail??""}</span></div></div></section>
 
+    {isCorrective && invoice.correctiveOf && <section className="panel detail-card"><div className="panel-header"><div><h2>Opravný doklad</h2><span>Původní doklad zůstává v historii zachovaný.</span></div></div><div className="detail-grid"><div><small>Opravuje doklad</small><strong><Link href={`/doklad/${invoice.correctiveOf.id}`}>{invoice.correctiveOf.number ?? invoice.correctiveOf.id}</Link></strong></div></div></section>}
+
     <section className="panel detail-card"><div className="panel-header"><div><h2>Položky</h2></div></div>
       <div className="table-wrap"><table className="data-table"><thead><tr><th>Popis</th><th>Množství</th><th>Jedn.</th><th className="amount">Cena/j.</th>{vatPayer&&<th>DPH</th>}<th className="amount">Celkem</th></tr></thead>
       <tbody>{invoice.items.map(x=><tr key={x.id}><td>{x.description}</td><td>{Number(x.quantity).toLocaleString("cs-CZ")}</td><td>{x.unit}</td><td className="amount">{Number(x.unitPrice).toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</td>{vatPayer&&<td>{x.vatRate===null?"-":Number(x.vatRate).toLocaleString("cs-CZ")+" %"}</td>}<td className="amount">{(Number(x.lineTotal)+(vatPayer?Number(x.lineTotal)*Number(x.vatRate||0)/100:0)).toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</td></tr>)}</tbody></table></div>
@@ -176,7 +180,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
     <section className={`print-invoice print-style-${(company.exportStyle ?? "CLASSIC").toLowerCase()}`}>
       <div className="print-topline">
         <div className="print-brand">{company.logoUrl && <img className="print-logo" src={company.logoUrl} alt="" />}<div><strong>{invoice.sellerName ?? "Fakturace"}</strong><span>{invoice.sellerStreet ?? ""}{invoice.sellerCity ? (invoice.sellerStreet ? ", " : "") + invoice.sellerCity : ""}</span></div></div>
-        <div className="print-type"><span>{vatPayer ? "DAŇOVÝ DOKLAD" : "FAKTURA"}</span><strong>{isAdvance ? "ZÁLOHOVÁ FAKTURA" : "FAKTURA"}</strong></div>
+        <div className="print-type"><span>{vatPayer ? "DAŇOVÝ DOKLAD" : "FAKTURA"}</span><strong>{isCorrective ? "OPRAVNÝ DOKLAD" : isAdvance ? "ZÁLOHOVÁ FAKTURA" : "FAKTURA"}</strong></div>
       </div>
 
       <div className="print-head">
