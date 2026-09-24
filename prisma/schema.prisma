@@ -243,10 +243,15 @@ model Invoice {
   advanceApplications    InvoiceAdvanceApplication[] @relation("FinalInvoiceAdvance")
   appliedToFinalInvoices InvoiceAdvanceApplication[] @relation("AdvanceInvoiceApplications")
 
+  correctiveOfId String?
+  correctiveOf   Invoice? @relation("InvoiceCorrection", fields: [correctiveOfId], references: [id], onDelete: SetNull)
+  corrections    Invoice[] @relation("InvoiceCorrection")
+
   @@unique([companyId, number])
   @@index([companyId, issueDate])
   @@index([companyId, status])
   @@index([companyId, customerId])
+  @@index([companyId, correctiveOfId])
 }
 
 model InvoiceItem {
