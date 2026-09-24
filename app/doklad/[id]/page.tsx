@@ -145,7 +145,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
   useEffect(() => {
     if (!invoice) return;
     const total = Number(invoice.total);
-    const paid = Number(invoice.paidAmount);
+    const paid = invoice.payments.reduce((sum,x)=>sum+Number(x.amount),0) + invoice.advanceApplications.reduce((sum,x)=>sum+Number(x.amount),0);
     const remaining = Math.max(0, total - paid);
     const account = company.iban || (company.bankAccount && company.bankCode ? company.bankAccount + "/" + company.bankCode : "");
     if (!account || remaining <= 0) { setQrCode(null); return; }
@@ -163,8 +163,11 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
 
   if (!invoice) return <AppShell><div className="content"><Link className="button button-secondary" href="/faktury">← Zpět</Link>{message&&<div className="auth-error settings-message">{message}</div>}</div></AppShell>;
 
-  const total=Number(invoice.total); const paid=Number(invoice.paidAmount);
-  const applied=invoice.advanceApplications.reduce((sum,x)=>sum+Number(x.amount),0); const remaining=Math.max(0,total-paid);
+  const total=Number(invoice.total);
+  const applied=invoice.advanceApplications.reduce((sum,x)=>sum+Number(x.amount),0);
+  const paidByPayments=invoice.payments.reduce((sum,x)=>sum+Number(x.amount),0);
+  const paid=paidByPayments + applied;
+  const remaining=Math.max(0,total-paid);
   const isFullySettledAdvance = isAdvance && applied >= total - 0.005;
   const advanceAvailableToApply = isAdvance ? Math.max(0, paid - applied) : 0;
   const detailNet=invoice.items.reduce((sum,x)=>sum+Number(x.lineTotal),0);
