@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { effectiveInvoiceStatus } from "@/lib/invoice-status";
 
 async function getMembership() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -24,12 +25,14 @@ export async function GET(request: Request) {
   const month = Array.from({ length: 12 }, (_, i) => ({ month: i + 1, invoiced: 0, paid: 0 }));
   for (const invoice of invoices) month[new Date(invoice.issueDate).getMonth()].invoiced += Number(invoice.total);
   for (const payment of payments) month[new Date(payment.paidAt).getMonth()].paid += Number(payment.amount);
+  const outstanding = invoices.reduce((s, x) => s + Math.max(0, Number(x.total) - Number(x.paidAmount)), 0);
+  const overdue = invoices.filter(x => effectiveInvoiceStatus(x) === "OVERDUE").reduce((s, x) => s + Math.max(0, Number(x.total) - Number(x.paidAmount)), 0);
   return NextResponse.json({
     year,
     totalInvoiced: invoices.reduce((s, x) => s + Number(x.total), 0),
     totalPaid: payments.reduce((s, x) => s + Number(x.amount), 0),
-    outstanding: invoices.reduce((s, x) => s + Math.max(0, Number(x.total) - Number(x.paidAmount)), 0),
-    overdue: invoices.filter(x => x.status === "OVERDUE").reduce((s, x) => s + Math.max(0, Number(x.total) - Number(x.paidAmount)), 0),
+    outstanding,
+    overdue,
     cash: cashDocuments.reduce((s, x) => s + Number(x.amount), 0),
     invoiceCount: invoices.length,
     month,
