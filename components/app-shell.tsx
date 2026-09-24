@@ -14,7 +14,7 @@ const primaryNavigation = [
 ];
 
 const secondaryNavigation = [["◫", "Přehledy", "/prehledy"]];
-const accountNavigation = [["⚙", "Nastavení", "/nastaveni"], ["#", "Číselné řady", "/nastaveni/ciselne-rady"], ["●", "Můj účet", "/ucet"]];
+const accountNavigation = [["⚙", "Nastavení", "/nastaveni"], ["#", "Číselné řady", "/nastaveni/ciselne-rady"], ["◷", "Auditní log", "/audit"], ["●", "Můj účet", "/ucet"]];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
