@@ -801,3 +801,9 @@ button {
     gap: 6px;
   }
 }
+
+
+.button-delete-subtle { border-color: #e5e7eb; background: transparent; color: #6b7280; }
+.button-delete-subtle:hover { border-color: #fecaca; background: #fef2f2; color: var(--danger); }
+.document-number-link { color: inherit; text-decoration: none; }
+.document-number-link:hover { text-decoration: underline; }
