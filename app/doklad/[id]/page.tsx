@@ -17,7 +17,7 @@ type Invoice = {
   subtotal: string | number; total: string | number; paidAmount: string | number; paymentMethod: string; variableSymbol: string | null; constantSymbol: string | null; specificSymbol: string | null; note: string | null;
   sellerName: string | null; sellerIco: string | null; sellerDic: string | null; sellerStreet: string | null; sellerCity: string | null; sellerZip: string | null; sellerCountry: string | null;
   sellerEmail: string | null; sellerPhone: string | null; buyerName: string | null; buyerIco: string | null; buyerDic: string | null; buyerStreet: string | null; buyerCity: string | null; buyerZip: string | null;
-  buyerCountry: string | null; buyerEmail: string | null; buyerPhone: string | null; customer: Customer | null; items: Item[]; payments: Payment[]; advanceApplications: Application[];
+  buyerCountry: string | null; buyerEmail: string | null; buyerPhone: string | null; customer: Customer | null; items: Item[]; payments: Payment[]; advanceApplications: Application[]; appliedToFinalInvoices: { id: string; amount: string | number; finalInvoice: { id: string; number: string | null } }[];
   correctiveOf: { id: string; number: string | null } | null; corrections: { id: string; number: string | null; total: string | number }[];
 };
 
