@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { reserveNumber } from "@/lib/numbering";
 
 async function getMembership() {
@@ -64,6 +65,8 @@ export async function POST(request: Request) {
           data: { companyId: membership.companyId, paymentId: created.id, number, date: paidAt, amount, method: "CASH", note },
         });
       }
+
+      await writeAudit(tx, { companyId: membership.companyId, userId: membership.userId, action: "CREATE", entity: "PAYMENT", entityId: created.id, details: amount.toFixed(2) });
 
       return tx.payment.findUnique({
         where: { id: created.id },
