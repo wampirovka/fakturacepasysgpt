@@ -58,6 +58,8 @@ export async function POST(request: Request) {
   try {
     const files = readZip(Buffer.from(await file.arrayBuffer()));
     const { manifest, counts } = await inspect(files);
+    const currentCompanyId = context.membership.companyId;
+    const companyMatches = String(manifest.companyId ?? "") === currentCompanyId;
 
     const customers = parseJson<Record<string,unknown>>(files,"customers.json");
     const invoices = parseJson<Record<string,unknown>>(files,"invoices.json");
@@ -80,9 +82,10 @@ export async function POST(request: Request) {
     for (const row of cashDocuments) if (row.paymentId && !paymentIds.has(String(row.paymentId))) warnings.push("Pokladní doklad " + String(row.number ?? row.id) + " odkazuje na úhradu mimo export.");
     for (const row of advanceApplications) if (!invoiceIds.has(String(row.finalInvoiceId)) || !invoiceIds.has(String(row.advanceInvoiceId))) errors.push("Vypořádání zálohy " + String(row.id) + " odkazuje na neexistující fakturu.");
 
-    const summary = { version: manifest.version, exportedAt: manifest.exportedAt, sourceCompanyId: manifest.companyId, counts, errors, warnings, canImport: errors.length === 0 };
+    if (!companyMatches) warnings.push("Export patří jiné firmě. Pro bezpečný import je v této verzi podporována pouze obnova stejné firmy.");
+    const summary = { version: manifest.version, exportedAt: manifest.exportedAt, sourceCompanyId: manifest.companyId, currentCompanyId, counts, errors, warnings, canImport: errors.length === 0 && companyMatches };
     if (!execute) return NextResponse.json(summary);
-    if (errors.length) return NextResponse.json({ ...summary, error: "Export obsahuje chyby a nebyl importován." }, { status: 400 });
+    if (errors.length || !companyMatches) return NextResponse.json({ ...summary, error: "Export nelze bezpečně importovat do této firmy." }, { status: 400 });
 
     const companyId = context.membership.companyId;
     await prisma.$transaction(async tx => {
