@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 
-type Customer = { id: string; name: string };\ntype ItemForm = { description: string; quantity: string; unit: string; unitPrice: string; discount: string; vatRate: string };
+type Customer = { id: string; name: string };
+type ItemForm = { description: string; quantity: string; unit: string; unitPrice: string; discount: string; vatRate: string };
 type Advance = {
   id: string;
   number: string | null;
@@ -30,21 +31,25 @@ export default function ZalohyPage() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [vatPayer, setVatPayer] = useState(false);
   const [form, setForm] = useState({
     customerId: "",
     description: "Záloha na zakázku",
     amount: "",
     issueDate: new Date().toISOString().slice(0, 10),
     dueDays: "14",
+    items: [{ description: "Záloha na zakázku", quantity: "1", unit: "ks", unitPrice: "", discount: "0", vatRate: "21" }],
   });
 
   async function load() {
     const [ar, cr, companyResponse] = await Promise.all([fetch("/api/advances"), fetch("/api/customers"), fetch("/api/company/me")]);
     const a = await ar.json().catch(() => ({}));
-    const c = await cr.json().catch(() => ({}));\n    const company = await companyResponse.json().catch(() => ({}));
+    const c = await cr.json().catch(() => ({}));
+    const company = await companyResponse.json().catch(() => ({}));
     if (ar.ok) setAdvances(a.advances ?? []);
     else setMessage(a.error ?? "Nepodařilo se načíst zálohy.");
-    if (cr.ok) setCustomers(c.customers ?? []);\n    setVatPayer(company.company?.vatStatus === "VAT_PAYER");
+    if (cr.ok) setCustomers(c.customers ?? []);
+    setVatPayer(company.company?.vatStatus === "VAT_PAYER");
   }
 
   useEffect(() => { load().catch(() => setMessage("Nepodařilo se načíst data.")); }, []);
