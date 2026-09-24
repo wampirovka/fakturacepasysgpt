@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 
 type Invoice = { id: string; number: string | null; total: string | number; paidAmount: string | number; customer: { name: string } | null };
-type Payment = { id: string; amount: string | number; paidAt: string; method: string; invoice: { number: string | null; customer: { name: string } | null }; cashDocument: { number: string | null } | null };
+type Payment = { id: string; amount: string | number; paidAt: string; method: string; invoice: { id: string; number: string | null; customer: { name: string } | null }; cashDocument: { number: string | null } | null };
 
 const methods: Record<string, string> = { BANK_TRANSFER: "Bankovní převod", CASH: "Hotově", CARD: "Kartou", OTHER: "Jiné" };
 
