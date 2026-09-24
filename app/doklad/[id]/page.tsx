@@ -274,7 +274,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
           <option value="">Vyberte zálohu</option>
           {availableAdvances.map((a:any)=><option key={a.id} value={a.id}>{a.number ?? a.id} · k uplatnění {Number(a.availableToApply).toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</option>)}
         </select></div>
-        <Field label="Částka k uplatnění" value={advanceAmount} onChange={setAdvanceAmount} type="text" inputMode="decimal" />
+        <div className="auth-field"><label>Částka k uplatnění</label><input type="text" inputMode="numeric" value={advanceAmount} onChange={e=>setAdvanceAmount(e.target.value)} /></div>
         <div className="customer-actions"><button className="button button-primary" onClick={applyAdvance} disabled={applyingAdvance || !selectedAdvanceId}>{applyingAdvance ? "Uplatňuji…" : "Uplatnit zálohu"}</button></div>
       </div>
     </section>}
