@@ -99,7 +99,7 @@ export default function ExportPage() {
             </p>
           </div>
           <div className="customer-actions">
-            <Link className="button button-secondary" href="/nastaveni">Zpět do nastavení</Link>
+            <Link className="button button-secondary" href="/nastaveni/import">Import dat</Link><Link className="button button-secondary" href="/nastaveni">Zpět do nastavení</Link>
           </div>
         </header>
 
