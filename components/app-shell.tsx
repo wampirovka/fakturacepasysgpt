@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";\nimport * as React from "react";
+import { usePathname, useRouter } from "next/navigation";
+import * as React from "react";
 import { authClient } from "@/lib/auth-client";
 
 const primaryNavigation = [
