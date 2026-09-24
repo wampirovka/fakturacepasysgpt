@@ -39,7 +39,7 @@ export default function FakturyPage() {
   const [advanceAmounts, setAdvanceAmounts] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [typeFilter, setTypeFilter] = useState("ALL");
+  const [typeFilter, setTypeFilter] = useState("INVOICE");
 
   async function load() {
     const [ir, cr, ar, companyResponse] = await Promise.all([
@@ -218,15 +218,15 @@ export default function FakturyPage() {
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option value="ALL">Všechny stavy</option><option value="ISSUED">Vystavené</option><option value="PARTIALLY_PAID">Částečně uhrazené</option><option value="PAID">Uhrazené</option><option value="OVERDUE">Po splatnosti</option><option value="DRAFT">Rozpracované</option><option value="CANCELLED">Stornované</option>
           </select>
-          <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-            <option value="ALL">Všechny typy</option><option value="INVOICE">Faktury</option><option value="ADVANCE">Zálohové</option><option value="CORRECTIVE">Opravné</option>
-          </select>
+          <button className="button button-secondary button-small" onClick={() => setTypeFilter(typeFilter === "INVOICE" ? "ALL" : "INVOICE")}>
+            {typeFilter === "INVOICE" ? "Všechny doklady" : "Jen faktury"}
+          </button>
         </div>
         <div className="table-wrap"><table className="data-table"><thead><tr><th>Číslo</th><th>Typ</th><th>Zákazník</th><th>Vystavení</th><th>Splatnost</th><th>Stav</th><th></th><th className="amount">Částka</th></tr></thead>
         <tbody>{filteredInvoices.length ? filteredInvoices.map(i => <tr key={i.id}>
-          <td><strong>{i.number ?? "Rozpracovaná"}</strong></td><td>{i.type === "ADVANCE" ? "Zálohová" : i.type === "CORRECTIVE" ? "Opravná" : "Faktura"}</td><td>{i.customer?.name ?? "Neuvedený zákazník"}</td>
+          <td><Link className="document-number-link" href={`/doklad/${i.id}?edit=1`}><strong>{i.number ?? "Rozpracovaná"}</strong></Link></td><td>{i.type === "ADVANCE" ? "Zálohová" : i.type === "CORRECTIVE" ? "Opravná" : "Faktura"}</td><td>{i.customer?.name ?? "Neuvedený zákazník"}</td>
           <td>{new Date(i.issueDate).toLocaleDateString("cs-CZ")}</td><td>{i.dueDate ? new Date(i.dueDate).toLocaleDateString("cs-CZ") : "-"}</td><td><span className={`status ${i.status === "PAID" ? "status-paid" : i.status === "OVERDUE" ? "status-overdue" : i.status === "DRAFT" || i.status === "CANCELLED" ? "status-muted" : "status-due"}`}>{statusText[i.status] ?? i.status}</span></td>
-          <td><div className="row-actions"><Link className="button button-secondary button-small" href={`/doklad/${i.id}`}>Detail</Link>{i.type !== "CORRECTIVE" && i.status !== "CANCELLED" && <button className="button button-secondary button-small" onClick={() => createCorrective(i.id, i.number)}>Opravný doklad</button>}<Link className="button button-secondary button-small" href={`/doklad/${i.id}?edit=1`}>Upravit</Link><button className="button button-danger button-small" onClick={() => deleteInvoice(i.id, i.number)}>Smazat</button></div></td>
+          <td><div className="row-actions"><Link className="button button-secondary button-small" href={`/doklad/${i.id}`}>Detail</Link>{i.type !== "CORRECTIVE" && i.status !== "CANCELLED" && <button className="button button-secondary button-small" onClick={() => createCorrective(i.id, i.number)}>Opravný doklad</button>}<button className="button button-secondary button-small button-delete-subtle" onClick={() => deleteInvoice(i.id, i.number)}>Smazat</button></div></td>
           <td className="amount">{Number(i.total).toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</td>
         </tr>) : <tr><td colSpan={8} className="table-muted">Zatím tu nejsou žádné faktury.</td></tr>}</tbody></table></div>
       </section>
