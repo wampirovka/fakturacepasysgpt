@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
 import { calculateInvoiceItems, parseInvoiceItems } from "@/lib/invoice-calculation";
+import { effectiveInvoiceStatus } from "@/lib/invoice-status";
 
 async function getMembership() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -34,7 +35,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   const { id } = await context.params;
   const result = await getAccess(id);
   if ("error" in result) return result.error;
-  return NextResponse.json({ invoice: result.invoice });
+  return NextResponse.json({ invoice: { ...result.invoice, status: effectiveInvoiceStatus(result.invoice) } });
 }
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
