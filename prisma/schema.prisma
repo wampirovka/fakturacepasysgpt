@@ -92,6 +92,7 @@ model Company {
   numberingSeries NumberingSeries[]
   payments        Payment[]
   cashDocuments   CashDocument[]
+  auditLogs       AuditLog[]
 
   @@index([ico])
 }
@@ -314,4 +315,20 @@ model CashDocument {
 
   @@unique([companyId, number])
   @@index([companyId, date])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  companyId String
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  details   String?
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, createdAt])
+  @@index([companyId, entity, entityId])
 }
