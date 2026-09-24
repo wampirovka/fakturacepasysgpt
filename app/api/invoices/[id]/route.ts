@@ -50,6 +50,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return NextResponse.json({ error: "Nemáte oprávnění upravovat doklady." }, { status: 403 });
   }
 
+  if (invoice.type === "CORRECTIVE") {
+    return NextResponse.json({ error: "Opravný doklad je po vystavení neměnný." }, { status: 409 });
+  }
+
   if (invoice.payments.length > 0 || invoice.advanceApplications.length > 0) {
     return NextResponse.json({
       error: invoice.advanceApplications.length > 0
@@ -166,6 +170,9 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
 
   if (!["OWNER", "ADMIN", "ACCOUNTANT"].includes(membership.role)) {
     return NextResponse.json({ error: "Nemáte oprávnění mazat doklady." }, { status: 403 });
+  }
+  if (invoice.type === "CORRECTIVE") {
+    return NextResponse.json({ error: "Vystavený opravný doklad nelze smazat." }, { status: 409 });
   }
   if (invoice.payments.length > 0) {
     return NextResponse.json({ error: "Doklad nelze smazat, protože obsahuje zaevidovanou úhradu." }, { status: 409 });
