@@ -175,7 +175,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
   return <AppShell><div className="content">
     <header className="page-header">
       <div><p className="eyebrow">{isCorrective?"Opravný doklad":isAdvance?"Zálohová faktura":"Faktura"}</p><h1 className="page-title">{invoice.number??"Doklad"}</h1><p className="page-subtitle">{invoice.customer?.name??invoice.buyerName??"Neuvedený zákazník"}</p></div>
-      <div className="customer-actions print-hide"><button className="button button-primary" onClick={()=>window.print()}>Tisk / PDF</button><Link className="button button-secondary" href={isAdvance?"/zalohy":"/faktury"}>← Zpět</Link>{!locked&&<button className="button button-secondary" onClick={()=>setEditing(!editing)}>{editing?"Zrušit úpravy":"Upravit"}</button>}{!locked&&<button className="button button-danger" onClick={remove}>Smazat</button>}</div>
+      <div className="customer-actions print-hide"><button className="button button-primary" onClick={()=>window.print()}>Tisk / PDF</button><Link className="button button-secondary" href={isAdvance?"/zalohy":"/faktury"}>← Zpět</Link>{!locked&&<button className="button button-secondary" onClick={()=>setEditing(!editing)}>{editing?"Zrušit úpravy":"Upravit"}</button>}{!locked&&<button className="button button-secondary button-delete-subtle" onClick={remove}>Smazat</button>}</div>
     </header>
 
     {message&&<div className={message==="Doklad byl upraven."?"auth-success settings-message":"auth-error settings-message"}>{message}</div>}
