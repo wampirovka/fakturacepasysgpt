@@ -22,7 +22,6 @@ type EntityKey = (typeof ENTITY_KEYS)[number];
 const entityLabels: Record<EntityKey, string> = {
   company: "Firma",
   members: "Členové firmy",
-  members: "Členové firmy",
   customers: "Zákazníci",
   invoices: "Faktury",
   invoiceItems: "Položky faktur",
