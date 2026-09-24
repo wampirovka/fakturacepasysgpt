@@ -76,6 +76,7 @@ export async function PATCH(request: Request) {
       bankAccount: text(body.bankAccount),
       bankCode: text(body.bankCode),
       iban: text(body.iban),
+      exportStyle: ["CLASSIC", "POHODA", "IDOKLAD"].includes(body.exportStyle) ? body.exportStyle : membership.company.exportStyle,
       vatStatus,
       defaultDueDays,
     },
