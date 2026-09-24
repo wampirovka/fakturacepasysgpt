@@ -6,6 +6,7 @@ import { AppShell } from "@/components/app-shell";
 
 const OPTIONS = [
   { key: "company", label: "Firma", description: "Údaje firmy a nastavení." },
+  { key: "members", label: "Členové firmy", description: "Členové firmy a jejich role, bez hesel a přístupových tokenů." },
   { key: "customers", label: "Zákazníci", description: "Zákazníci včetně jejich původních ID." },
   { key: "invoices", label: "Faktury", description: "Běžné, zálohové i opravné doklady." },
   { key: "invoiceItems", label: "Položky faktur", description: "Položky navázané přes invoiceId." },
