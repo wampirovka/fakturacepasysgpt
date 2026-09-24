@@ -85,14 +85,27 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
     });
   }, [invoice]);
 
-  useEffect(() => {
-    if (invoice && searchParams.get("edit") === "1" && invoice.payments.length === 0 && invoice.advanceApplications.length === 0) setEditing(true);
-  }, [invoice, searchParams]);
-
   const isAdvance = invoice?.type === "ADVANCE";
   const isCorrective = invoice?.type === "CORRECTIVE";
   const isFinal = invoice?.advanceApplications?.length > 0;
   const locked = Boolean(invoice && (invoice.payments.length > 0 || isFinal || isCorrective));
+  const lockReason = invoice?.payments.length
+    ? "Doklad už má zaevidovanou úhradu, proto ho nelze upravovat."
+    : isFinal
+      ? "Doklad už obsahuje vypořádanou zálohu, proto ho nelze upravovat."
+      : isCorrective
+        ? "Opravný doklad je po vystavení neměnný."
+        : "";
+
+  useEffect(() => {
+    if (!invoice || searchParams.get("edit") !== "1") return;
+    if (locked) {
+      setEditing(false);
+      setMessage(lockReason);
+    } else {
+      setEditing(true);
+    }
+  }, [invoice, searchParams, locked, lockReason]);
 
   const calculation = useMemo(() => form.items.reduce((acc, item) => {
     const qty=Number(item.quantity)||0, price=Number(item.unitPrice)||0, discount=Number(item.discount)||0;
@@ -181,7 +194,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
   return <AppShell><div className="content">
     <header className="page-header">
       <div><p className="eyebrow">{isCorrective?"Opravný doklad":isAdvance?"Zálohová faktura":"Faktura"}</p><h1 className="page-title">{invoice.number??"Doklad"}</h1><p className="page-subtitle">{invoice.customer?.name??invoice.buyerName??"Neuvedený zákazník"}</p></div>
-      <div className="customer-actions print-hide"><button className="button button-primary" onClick={()=>{ const category = isCorrective ? "Opravny_doklad" : isAdvance ? "Zalohova_faktura" : "Faktura"; const originalTitle = document.title; document.title = `${category}_${invoice.number ?? "Doklad"}`; window.print(); window.setTimeout(() => { document.title = originalTitle; }, 1000); }}>Tisk / PDF</button><Link className="button button-secondary" href={isAdvance?"/zalohy":"/faktury"}>← Zpět</Link>{!locked&&<button className="button button-secondary" onClick={()=>setEditing(!editing)}>{editing?"Zrušit úpravy":"Upravit"}</button>}{!locked&&<button className="button button-secondary button-delete-subtle" onClick={remove}>Smazat</button>}</div>
+      <div className="customer-actions print-hide"><button className="button button-primary" onClick={()=>{ const category = isCorrective ? "Opravny_doklad" : isAdvance ? "Zalohova_faktura" : "Faktura"; const originalTitle = document.title; document.title = `${category}_${invoice.number ?? "Doklad"}`; window.print(); window.setTimeout(() => { document.title = originalTitle; }, 1000); }}>Tisk / PDF</button><Link className="button button-secondary" href={isAdvance?"/zalohy":"/faktury"}>← Zpět</Link><button className="button button-secondary" onClick={()=>{ if (locked) { setMessage(lockReason); return; } setEditing(!editing); }}>{editing?"Zrušit úpravy":"Upravit"}</button>{!locked&&<button className="button button-secondary button-delete-subtle" onClick={remove}>Smazat</button>}</div>
     </header>
 
     {message&&<div className={message==="Doklad byl upraven."?"auth-success settings-message":"auth-error settings-message"}>{message}</div>}
