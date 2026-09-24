@@ -169,6 +169,13 @@ export async function POST(request: Request) {
       }).filter(Boolean);
       const users = emails.length ? await tx.user.findMany({ where:{email:{in:emails}}, select:{id:true,email:true} }):[];
       const userByEmail = new Map(users.map(user => [user.email.toLowerCase(),user.id]));
+      const sourceUserToTarget = new Map<string,string>();
+      for (const row of members) {
+        const sourceUserId = row.userId ? String(row.userId) : String((row.user as Record<string,unknown> | undefined)?.id ?? "");
+        const user = row.user as Record<string,unknown> | undefined;
+        const targetUserId = userByEmail.get(String(user?.email ?? row.email ?? "").toLowerCase());
+        if (sourceUserId && targetUserId) sourceUserToTarget.set(sourceUserId, targetUserId);
+      }
       for (const row of members) {
         const user = row.user as Record<string,unknown> | undefined;
         const userId = userByEmail.get(String(user?.email ?? row.email ?? "").toLowerCase());
@@ -178,9 +185,9 @@ export async function POST(request: Request) {
 
       const auditRows = parseJson<Record<string,unknown>>(files,"auditLog.json");
       for (const row of auditRows) await tx.auditLog.upsert({ where:{id:String(row.id)}, create:{
-        id:String(row.id), companyId, userId:row.userId ? String(row.userId):null, action:String(row.action ?? ""), entity:String(row.entity ?? ""),
+        id:String(row.id), companyId, userId:row.userId ? (sourceUserToTarget.get(String(row.userId)) ?? null):null, action:String(row.action ?? ""), entity:String(row.entity ?? ""),
         entityId:row.entityId ? String(row.entityId):null, details:row.details ? String(row.details):null, createdAt:asDate(row.createdAt) ?? new Date()
-      }, update:{ companyId, userId:row.userId ? String(row.userId):null, action:String(row.action ?? ""), entity:String(row.entity ?? ""), entityId:row.entityId ? String(row.entityId):null, details:row.details ? String(row.details):null } }));
+      }, update:{ companyId, userId:row.userId ? (sourceUserToTarget.get(String(row.userId)) ?? null):null, action:String(row.action ?? ""), entity:String(row.entity ?? ""), entityId:row.entityId ? String(row.entityId):null, details:row.details ? String(row.details):null } }));
 
       await tx.auditLog.create({ data:{companyId,userId:context.session.user.id,action:"IMPORT",entity:"DATA_IMPORT",details:JSON.stringify({version:manifest.version,sourceCompanyId:manifest.companyId,counts})} });
     });
