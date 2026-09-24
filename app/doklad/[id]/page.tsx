@@ -33,6 +33,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
   const [company, setCompany] = useState<{name?: string|null; ico?: string|null; dic?: string|null; street?: string|null; city?: string|null; zip?: string|null; country?: string|null; email?: string|null; phone?: string|null; logoUrl?: string|null; bankAccount?: string|null; bankCode?: string|null; iban?: string|null; exportStyle?: ExportStyle}>({});
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
+  const [repairMode, setRepairMode] = useState(false);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ number: "", customerId: "", issueDate: "", dueDays: "14", paymentMethod: "BANK_TRANSFER", items: [] as ItemForm[] });
@@ -101,9 +102,11 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
     if (!invoice || searchParams.get("edit") !== "1") return;
     if (locked) {
       setEditing(false);
+      setRepairMode(false);
       setMessage(lockReason);
     } else {
       setEditing(true);
+      setRepairMode(false);
     }
   }, [invoice, searchParams, locked, lockReason]);
 
@@ -145,11 +148,11 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
     setSaving(true); setMessage("");
     const r = await fetch("/api/invoices/" + invoice.id, {
       method:"PATCH", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({...form, items:form.items.map(item=>({...item,quantity:Number(item.quantity),unitPrice:Number(item.unitPrice),discount:Number(item.discount),vatRate:vatPayer?Number(item.vatRate):null}))}),
+      body:JSON.stringify({...form, forceEdit: repairMode, items:form.items.map(item=>({...item,quantity:Number(item.quantity),unitPrice:Number(item.unitPrice),discount:Number(item.discount),vatRate:vatPayer?Number(item.vatRate):null}))}),
     });
     const data=await r.json().catch(()=>({}));
     if(!r.ok) setMessage(data.error??"Doklad se nepodařilo upravit.");
-    else { setInvoice({...invoice,...data.invoice}); setEditing(false); setMessage("Doklad byl upraven."); }
+    else { setInvoice({...invoice,...data.invoice}); setEditing(false); setRepairMode(false); setMessage(repairMode ? "Uzamčený doklad byl opraven." : "Doklad byl upraven."); }
     setSaving(false);
   }
 
@@ -194,15 +197,15 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
   return <AppShell><div className="content">
     <header className="page-header">
       <div><p className="eyebrow">{isCorrective?"Opravný doklad":isAdvance?"Zálohová faktura":"Faktura"}</p><h1 className="page-title">{invoice.number??"Doklad"}</h1><p className="page-subtitle">{invoice.customer?.name??invoice.buyerName??"Neuvedený zákazník"}</p></div>
-      <div className="customer-actions print-hide"><button className="button button-primary" onClick={()=>{ const category = isCorrective ? "Opravny_doklad" : isAdvance ? "Zalohova_faktura" : "Faktura"; const originalTitle = document.title; document.title = `${category}_${invoice.number ?? "Doklad"}`; window.print(); window.setTimeout(() => { document.title = originalTitle; }, 1000); }}>Tisk / PDF</button><Link className="button button-secondary" href={isAdvance?"/zalohy":"/faktury"}>← Zpět</Link><button className="button button-secondary" onClick={()=>{ if (locked) { setMessage(lockReason); return; } setEditing(!editing); }}>{editing?"Zrušit úpravy":"Upravit"}</button>{!locked&&<button className="button button-secondary button-delete-subtle" onClick={remove}>Smazat</button>}</div>
+      <div className="customer-actions print-hide"><button className="button button-primary" onClick={()=>{ const category = isCorrective ? "Opravny_doklad" : isAdvance ? "Zalohova_faktura" : "Faktura"; const originalTitle = document.title; document.title = `${category}_${invoice.number ?? "Doklad"}`; window.print(); window.setTimeout(() => { document.title = originalTitle; }, 1000); }}>Tisk / PDF</button><Link className="button button-secondary" href={isAdvance?"/zalohy":"/faktury"}>← Zpět</Link><button className="button button-secondary" onClick={()=>{ if (locked) { if (window.confirm("Doklad je uzamčený, protože už obsahuje úhradu, vypořádanou zálohu nebo jde o opravný doklad. Chcete zapnout režim opravy? Změny se zapíšou do historie dokladu.")) { setRepairMode(true); setEditing(true); setMessage("Režim opravy je aktivní. Před uložením zkontrolujte částku a návaznosti na úhrady."); } return; } setRepairMode(false); setEditing(!editing); }}>{editing?"Zrušit úpravy":locked?"Opravit uzamčený doklad":"Upravit"}</button>{!locked&&<button className="button button-secondary button-delete-subtle" onClick={remove}>Smazat</button>}</div>
     </header>
 
-    {message&&<div className={message==="Doklad byl upraven."?"auth-success settings-message":"auth-error settings-message"}>{message}</div>}
+    {message&&<div className={(message==="Doklad byl upraven."||message==="Uzamčený doklad byl opraven.")?"auth-success settings-message":"auth-error settings-message"}>{message}</div>}
 
     {emailOpen&&<div className="modal-backdrop print-hide"><section className="panel email-modal"><div className="panel-header"><div><h2>Odeslat doklad e-mailem</h2><span>Odeslání na e-mail zákazníka.</span></div></div><div className="form-grid"><div className="auth-field"><label>Komu</label><input type="email" value={emailTo} onChange={e=>setEmailTo(e.target.value)} /></div><div className="auth-field"><label>Předmět</label><input value={emailSubject} onChange={e=>setEmailSubject(e.target.value)} /></div><div className="auth-field settings-wide"><label>Zpráva</label><textarea rows={8} value={emailMessage} onChange={e=>setEmailMessage(e.target.value)} /></div></div><div className="invoice-form-actions"><button className="button button-secondary" type="button" onClick={()=>setEmailOpen(false)}>Zrušit</button><button className="button button-primary" type="button" disabled={emailSending||!emailTo||!emailSubject} onClick={async()=>{setEmailSending(true);setMessage("");try{const r=await fetch(`/api/invoices/${invoice.id}/email`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({to:emailTo,subject:emailSubject,message:emailMessage})});const data=await r.json().catch(()=>({}));if(!r.ok){setMessage(data.error??"E-mail se nepodařilo odeslat.");return;}setEmailOpen(false);setMessage("E-mail byl odeslán.");}catch{setMessage("E-mail se nepodařilo odeslat.");}finally{setEmailSending(false);}}}>{emailSending?"Odesílám…":"Odeslat e-mail"}</button></div></section></div>}
 
     {editing&&<section className="panel invoice-editor print-hide">
-      <div className="panel-header"><div><h2>Úprava dokladu</h2><span>Číslo lze upravit, pokud ještě nebyla zaevidována úhrada.</span></div></div>
+      <div className="panel-header"><div><h2>{repairMode?"Oprava uzamčeného dokladu":"Úprava dokladu"}</h2><span>{repairMode?"Doklad má existující úhrady nebo vypořádání. Změny se evidují v historii a celková částka nesmí klesnout pod již uhrazenou částku.":"Číslo lze upravit, pokud ještě nebyla zaevidována úhrada."}</span></div></div>
       <div className="settings-grid">
         <Field label="Číslo dokladu" value={form.number} onChange={v=>setForm({...form,number:v})}/>
         <div className="auth-field"><label>Zákazník</label><select value={form.customerId} onChange={e=>setForm({...form,customerId:e.target.value})}><option value="">Vyberte zákazníka</option>{customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
@@ -216,7 +219,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
         <tbody>{form.items.map((item,index)=>{const qty=Number(item.quantity)||0,price=Number(item.unitPrice)||0,discount=Number(item.discount)||0;const net=Math.round(qty*price*(1-discount/100)*100)/100;const vat=vatPayer?Math.round(net*(Number(item.vatRate)||0)/100*100)/100:0;return <tr key={index}><td><input className="table-input" value={item.description} onChange={e=>updateItem(index,"description",e.target.value)} required/></td><td><input className="table-input table-number" type="number" min="0.001" step="0.001" value={item.quantity} onChange={e=>updateItem(index,"quantity",e.target.value)}/></td><td><input className="table-input table-number" value={item.unit} onChange={e=>updateItem(index,"unit",e.target.value)}/></td><td><input className="table-input table-number" type="number" min="0" step="0.01" value={item.unitPrice} onChange={e=>updateItem(index,"unitPrice",e.target.value)}/></td><td><input className="table-input table-number" type="number" min="0" max="100" step="0.01" value={item.discount} onChange={e=>updateItem(index,"discount",e.target.value)}/></td>{vatPayer&&<td><select className="table-input" value={item.vatRate} onChange={e=>updateItem(index,"vatRate",e.target.value)}><option value="21">21 %</option><option value="12">12 %</option><option value="0">0 %</option></select></td>}<td className="amount">{(net+vat).toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</td><td><button type="button" className="button button-danger button-small" disabled={form.items.length===1} onClick={()=>removeItem(index)}>×</button></td></tr>})}</tbody></table></div>
         <div className="invoice-summary"><div><span>Základ</span><strong>{calculation.net.toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</strong></div>{vatPayer&&<div><span>DPH</span><strong>{calculation.vat.toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</strong></div>}<div className="grand"><span>Celkem</span><strong>{calculation.total.toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</strong></div></div>
       </section>
-      <div className="invoice-form-actions"><button type="button" className="button button-secondary" onClick={()=>setEditing(false)}>Zrušit</button><button className="button button-primary" disabled={saving} onClick={save}>{saving?"Ukládám…":"Uložit změny"}</button></div>
+      <div className="invoice-form-actions"><button type="button" className="button button-secondary" onClick={()=>{setEditing(false);setRepairMode(false);}}>Zrušit</button><button className="button button-primary" disabled={saving} onClick={save}>{saving?"Ukládám…":"Uložit změny"}</button></div>
     </section>}
 
     <section className="panel detail-card"><div className="panel-header"><div><h2>Přehled dokladu</h2><span><span className="status status-due">{statusText[invoice.status]??invoice.status}</span></span></div></div><div className="detail-grid"><div><small>Vystavení</small><strong>{new Date(invoice.issueDate).toLocaleDateString("cs-CZ")}</strong></div><div><small>Splatnost</small><strong>{invoice.dueDate?new Date(invoice.dueDate).toLocaleDateString("cs-CZ"):"-"}</strong></div><div><small>Způsob úhrady</small><strong>{methodText[invoice.paymentMethod]??invoice.paymentMethod}</strong></div><div><small>Variabilní symbol</small><strong>{invoice.variableSymbol??"-"}</strong></div></div></section>
