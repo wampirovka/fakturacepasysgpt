@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 
 async function getMembership() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -81,6 +82,8 @@ export async function PATCH(request: Request) {
       defaultDueDays,
     },
   });
+
+  await prisma.auditLog.create({ data: { companyId: company.id, userId: session.user.id, action: "UPDATE", entity: "COMPANY", entityId: company.id } });
 
   return NextResponse.json({ company });
 }
