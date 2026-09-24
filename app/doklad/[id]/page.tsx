@@ -41,6 +41,11 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
   const [advanceAmount, setAdvanceAmount] = useState("");
   const advanceAmountInput = useRef<HTMLInputElement>(null);
   const [applyingAdvance, setApplyingAdvance] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState("");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailMessage, setEmailMessage] = useState("");
+  const [emailSending, setEmailSending] = useState(false);
 
   useEffect(() => {
     params.then(({ id }) => {
@@ -180,6 +185,8 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
     </header>
 
     {message&&<div className={message==="Doklad byl upraven."?"auth-success settings-message":"auth-error settings-message"}>{message}</div>}
+
+    {emailOpen&&<div className="modal-backdrop print-hide"><section className="panel email-modal"><div className="panel-header"><div><h2>Odeslat doklad e-mailem</h2><span>Odeslání na e-mail zákazníka.</span></div></div><div className="form-grid"><div className="auth-field"><label>Komu</label><input type="email" value={emailTo} onChange={e=>setEmailTo(e.target.value)} /></div><div className="auth-field"><label>Předmět</label><input value={emailSubject} onChange={e=>setEmailSubject(e.target.value)} /></div><div className="auth-field settings-wide"><label>Zpráva</label><textarea rows={8} value={emailMessage} onChange={e=>setEmailMessage(e.target.value)} /></div></div><div className="invoice-form-actions"><button className="button button-secondary" type="button" onClick={()=>setEmailOpen(false)}>Zrušit</button><button className="button button-primary" type="button" disabled={emailSending||!emailTo||!emailSubject} onClick={async()=>{setEmailSending(true);setMessage("");try{const r=await fetch(`/api/invoices/${invoice.id}/email`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({to:emailTo,subject:emailSubject,message:emailMessage})});const data=await r.json().catch(()=>({}));if(!r.ok){setMessage(data.error??"E-mail se nepodařilo odeslat.");return;}setEmailOpen(false);setMessage("E-mail byl odeslán.");}catch{setMessage("E-mail se nepodařilo odeslat.");}finally{setEmailSending(false);}}}>{emailSending?"Odesílám…":"Odeslat e-mail"}</button></div></section></div>}
 
     {editing&&<section className="panel invoice-editor print-hide">
       <div className="panel-header"><div><h2>Úprava dokladu</h2><span>Číslo lze upravit, pokud ještě nebyla zaevidována úhrada.</span></div></div>
