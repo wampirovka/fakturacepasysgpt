@@ -61,10 +61,29 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Uživatel nemá přiřazenou firmu." }, { status: 404 });
   }
 
+  if (!["OWNER", "ADMIN", "ACCOUNTANT"].includes(membership.role)) {
+    return NextResponse.json({ error: "Nemáte oprávnění exportovat firemní data." }, { status: 403 });
+  }
+
   const { searchParams } = new URL(request.url);
   const selected = normalizeEntities(searchParams.get("entities")?.split(",").filter(Boolean));
   const includeAll = searchParams.get("all") === "1";
-  const entities = includeAll ? [...ENTITY_KEYS] : selected;
+  const requested = includeAll ? [...ENTITY_KEYS] : selected;
+  const dependencyMap: Partial<Record<EntityKey, EntityKey[]>> = {
+    invoices: ["company", "customers", "invoiceItems"],
+    invoiceItems: ["company", "invoices", "customers"],
+    payments: ["company", "invoices"],
+    cashDocuments: ["company", "payments", "invoices"],
+    advanceApplications: ["company", "invoices"],
+    numberingSeries: ["company"],
+    customers: ["company"],
+    auditLog: ["company"],
+  };
+  const entitySet = new Set<EntityKey>(requested);
+  for (const entity of requested) {
+    for (const dependency of dependencyMap[entity] ?? []) entitySet.add(dependency);
+  }
+  const entities = [...entitySet];
   const companyId = membership.companyId;
 
   const [company, customers, invoices, numberingSeries] = await Promise.all([
