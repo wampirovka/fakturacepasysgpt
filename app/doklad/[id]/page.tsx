@@ -30,7 +30,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [vatPayer, setVatPayer] = useState(false);
-  const [company, setCompany] = useState<{logoUrl?: string|null; bankAccount?: string|null; bankCode?: string|null; iban?: string|null; exportStyle?: ExportStyle}>({});
+  const [company, setCompany] = useState<{name?: string|null; ico?: string|null; dic?: string|null; street?: string|null; city?: string|null; zip?: string|null; country?: string|null; email?: string|null; phone?: string|null; logoUrl?: string|null; bankAccount?: string|null; bankCode?: string|null; iban?: string|null; exportStyle?: ExportStyle}>({});
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState("");
@@ -236,7 +236,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
       </div>
 
       <div className="print-parties">
-        <div><span className="print-label">DODAVATEL</span><strong>{invoice.sellerName ?? "-"}</strong><span>{[invoice.sellerStreet, invoice.sellerZip, invoice.sellerCity].filter(Boolean).join(", ")}</span><span>{invoice.sellerIco ? "IČO: " + invoice.sellerIco : ""}</span><span>{invoice.sellerDic ? "DIČ: " + invoice.sellerDic : ""}</span><span>{invoice.sellerEmail ?? ""}{invoice.sellerPhone ? " · " + invoice.sellerPhone : ""}</span></div>
+        <div><span className="print-label">DODAVATEL</span><strong>{company.name ?? invoice.sellerName ?? "-"}</strong><span>{[company.street, company.zip, company.city].filter(Boolean).join(", ")}</span><span>{company.ico ? "IČO: " + company.ico : invoice.sellerIco ? "IČO: " + invoice.sellerIco : ""}</span><span>{company.dic ? "DIČ: " + company.dic : invoice.sellerDic ? "DIČ: " + invoice.sellerDic : ""}</span><span>{company.email ?? invoice.sellerEmail ?? ""}{company.phone ? " · " + company.phone : invoice.sellerPhone ? " · " + invoice.sellerPhone : ""}</span></div>
         <div><span className="print-label">ODBĚRATEL</span><strong>{invoice.buyerName ?? "-"}</strong><span>{[invoice.buyerStreet, invoice.buyerZip, invoice.buyerCity].filter(Boolean).join(", ")}</span><span>{invoice.buyerIco ? "IČO: " + invoice.buyerIco : ""}</span><span>{invoice.buyerDic ? "DIČ: " + invoice.buyerDic : ""}</span><span>{invoice.buyerEmail ?? ""}{invoice.buyerPhone ? " · " + invoice.buyerPhone : ""}</span></div>
       </div>
 
