@@ -493,3 +493,185 @@ button {
 
   .print-items tr { break-inside: avoid; }
 }
+
+
+/* Výchozí export zůstává čistý a neutrální. Další dvě varianty jsou inspirované
+   běžnou českou účetní fakturací, ale mají vlastní rozvržení a typografii. */
+.field-help { color: var(--text-muted); font-size: 11px; line-height: 1.4; margin-top: 2px; }
+
+@media print {
+  /* Tradiční účetní styl: výraznější rámečky, tabulkovější hlavička,
+     kompaktnější bloky a důraz na číslo dokladu. */
+  .print-style-pohoda .print-topline {
+    min-height: 68px;
+    padding: 0 0 10px;
+    border-bottom: 1px solid #222;
+    align-items: center;
+  }
+  .print-style-pohoda .print-brand strong { font-size: 12pt; }
+  .print-style-pohoda .print-type {
+    border: 1px solid #222;
+    padding: 7px 12px;
+    min-width: 155px;
+  }
+  .print-style-pohoda .print-type span { color: #222; }
+  .print-style-pohoda .print-type strong { font-size: 11pt; }
+  .print-style-pohoda .print-head {
+    display: grid;
+    grid-template-columns: 1fr 1.35fr;
+    gap: 20px;
+    align-items: stretch;
+    padding: 12px 0;
+  }
+  .print-style-pohoda .print-head > div:first-child {
+    padding: 8px 10px;
+    border: 1px solid #222;
+  }
+  .print-style-pohoda .print-head h1 { font-size: 21pt; }
+  .print-style-pohoda .print-meta {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    border: 1px solid #aaa;
+    text-align: left;
+  }
+  .print-style-pohoda .print-meta > div {
+    padding: 8px 9px;
+    border-left: 1px solid #aaa;
+  }
+  .print-style-pohoda .print-meta > div:first-child { border-left: 0; }
+  .print-style-pohoda .print-parties { gap: 0; margin: 8px 0 18px; }
+  .print-style-pohoda .print-parties > div {
+    min-height: 105px;
+    border: 1px solid #aaa;
+    border-radius: 0;
+  }
+  .print-style-pohoda .print-parties > div + div { border-left: 0; }
+  .print-style-pohoda .print-items th {
+    background: #ededed;
+    border-top: 1px solid #222;
+    border-bottom: 1px solid #222;
+  }
+  .print-style-pohoda .print-items td { border-bottom: 1px solid #cfcfcf; }
+  .print-style-pohoda .print-summary {
+    grid-template-columns: 1.25fr 1fr;
+    gap: 20px;
+    margin-top: 18px;
+  }
+  .print-style-pohoda .print-payment {
+    border: 1px solid #aaa;
+    padding: 11px 13px;
+  }
+  .print-style-pohoda .print-totals {
+    border: 1px solid #aaa;
+    padding: 0 12px;
+  }
+  .print-style-pohoda .print-total-grand {
+    margin: 0 -12px;
+    padding: 10px 12px !important;
+    background: #ededed;
+    border-top: 1px solid #222 !important;
+    border-bottom: 1px solid #222 !important;
+  }
+  .print-style-pohoda .print-footer { margin-top: 25px; }
+
+  /* Moderní styl: více bílého prostoru, barevný akcent, číslo dokladu
+     v samostatném panelu a platba výrazněji oddělená od součtů. */
+  .print-style-idoklad {
+    --export-accent: #2878d7;
+  }
+  .print-style-idoklad .print-topline {
+    border-bottom: 4px solid var(--export-accent);
+    padding-bottom: 13px;
+  }
+  .print-style-idoklad .print-brand strong { font-size: 15pt; }
+  .print-style-idoklad .print-type {
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: #f1f6fc;
+    color: var(--export-accent);
+  }
+  .print-style-idoklad .print-type span { color: var(--export-accent); }
+  .print-style-idoklad .print-type strong { font-size: 12pt; }
+  .print-style-idoklad .print-head {
+    padding: 20px 0 16px;
+    border-bottom: 0;
+    align-items: center;
+  }
+  .print-style-idoklad .print-head > div:first-child {
+    padding: 0;
+  }
+  .print-style-idoklad .print-number-label {
+    color: var(--export-accent);
+    font-weight: 700;
+  }
+  .print-style-idoklad .print-head h1 {
+    font-size: 27pt;
+    color: #111827;
+  }
+  .print-style-idoklad .print-meta {
+    padding: 10px 13px;
+    border: 1px solid #dce6f2;
+    border-radius: 7px;
+    background: #f8fbff;
+  }
+  .print-style-idoklad .print-parties {
+    gap: 12px;
+    margin: 5px 0 25px;
+  }
+  .print-style-idoklad .print-parties > div {
+    min-height: 105px;
+    border: 0;
+    border-left: 4px solid var(--export-accent);
+    background: #f7f9fc;
+    border-radius: 0 7px 7px 0;
+    padding: 13px 16px;
+  }
+  .print-style-idoklad .print-label { color: var(--export-accent) !important; }
+  .print-style-idoklad .print-items th {
+    color: #fff;
+    background: var(--export-accent);
+    border: 0;
+    padding: 9px 7px;
+  }
+  .print-style-idoklad .print-items td {
+    padding: 10px 7px;
+    border-bottom: 1px solid #e5eaf0;
+  }
+  .print-style-idoklad .print-items tbody tr:nth-child(even) td {
+    background: #fafcff;
+  }
+  .print-style-idoklad .print-summary {
+    grid-template-columns: 1fr 315px;
+    gap: 34px;
+    margin-top: 28px;
+  }
+  .print-style-idoklad .print-payment {
+    padding: 13px 15px;
+    border: 1px solid #dce6f2;
+    border-radius: 7px;
+    background: #fbfdff;
+  }
+  .print-style-idoklad .print-totals {
+    border-top: 0;
+    border: 1px solid #dce6f2;
+    border-radius: 7px;
+    padding: 7px 14px 0;
+  }
+  .print-style-idoklad .print-total-grand {
+    margin: 6px -14px 0;
+    padding: 13px 14px !important;
+    background: #eef5fd;
+    color: #0f5fae;
+    border-top: 2px solid var(--export-accent) !important;
+    border-bottom: 0 !important;
+    border-radius: 0 0 7px 7px;
+  }
+  .print-style-idoklad .print-total-grand strong { color: #0f5fae; }
+  .print-style-idoklad .print-note-block {
+    border-color: #dce6f2;
+  }
+  .print-style-idoklad .print-footer {
+    border-top-color: #dce6f2;
+  }
+}
