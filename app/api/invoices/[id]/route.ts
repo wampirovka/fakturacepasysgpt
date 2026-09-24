@@ -196,3 +196,97 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
     return NextResponse.json({ error: error instanceof Error ? error.message : "Nepodařilo se smazat doklad." }, { status: 500 });
   }
 }
+
+
+export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params;
+  const result = await getAccess(id);
+  if ("error" in result) return result.error;
+  const { membership, invoice } = result;
+
+  if (!["OWNER", "ADMIN", "ACCOUNTANT"].includes(membership.role)) {
+    return NextResponse.json({ error: "Nemáte oprávnění vypořádávat zálohy." }, { status: 403 });
+  }
+  if (invoice.type !== "INVOICE") {
+    return NextResponse.json({ error: "Zálohu lze uplatnit pouze na konečnou fakturu." }, { status: 409 });
+  }
+  if (invoice.status === "CANCELLED" || invoice.status === "DRAFT") {
+    return NextResponse.json({ error: "Na tento doklad nelze uplatnit zálohu." }, { status: 409 });
+  }
+
+  let body: Record<string, unknown>;
+  try { body = await request.json(); } catch { return NextResponse.json({ error: "Neplatná data formuláře." }, { status: 400 }); }
+
+  const advanceInvoiceId = typeof body.advanceInvoiceId === "string" ? body.advanceInvoiceId : "";
+  const amount = Number(body.amount ?? 0);
+  if (!advanceInvoiceId) return NextResponse.json({ error: "Záloha je povinná." }, { status: 400 });
+  if (!Number.isFinite(amount) || amount <= 0) return NextResponse.json({ error: "Částka zálohy musí být větší než 0." }, { status: 400 });
+
+  try {
+    const application = await prisma.$transaction(async tx => {
+      const target = await tx.invoice.findFirst({
+        where: { id, companyId: membership.companyId },
+        include: {
+          payments: { select: { amount: true } },
+          advanceApplications: { select: { advanceInvoiceId: true, amount: true } },
+        },
+      });
+      if (!target) throw new Error("Konečná faktura nebyla nalezena.");
+      if (target.type !== "INVOICE") throw new Error("Zálohu lze uplatnit pouze na konečnou fakturu.");
+      if (["CANCELLED", "DRAFT"].includes(target.status)) throw new Error("Na tento doklad nelze uplatnit zálohu.");
+      if (target.advanceApplications.some(item => item.advanceInvoiceId === advanceInvoiceId)) {
+        throw new Error("Tato záloha je na faktuře již uplatněná.");
+      }
+
+      const advance = await tx.invoice.findFirst({
+        where: { id: advanceInvoiceId, companyId: membership.companyId, type: "ADVANCE", customerId: target.customerId },
+        include: { appliedToFinalInvoices: { select: { amount: true } } },
+      });
+      if (!advance) throw new Error("Záloha nepatří ke stejné firmě a zákazníkovi.");
+
+      const appliedFromAdvance = advance.appliedToFinalInvoices.reduce((sum, item) => sum + Number(item.amount), 0);
+      const available = Math.max(0, Number(advance.paidAmount) - appliedFromAdvance);
+      if (available <= 0.005) throw new Error("Na záloze už není žádná částka k uplatnění.");
+
+      const paidByPayments = target.payments.reduce((sum, item) => sum + Number(item.amount), 0);
+      const appliedToTarget = target.advanceApplications.reduce((sum, item) => sum + Number(item.amount), 0);
+      const remaining = Math.max(0, Number(target.total) - paidByPayments - appliedToTarget);
+      if (remaining <= 0.005) throw new Error("Faktura už nemá žádnou částku k vypořádání.");
+      if (amount > available + 0.005) throw new Error(`Na záloze lze uplatnit nejvýše ${available.toFixed(2)} Kč.`);
+      if (amount > remaining + 0.005) throw new Error(`Na faktuře lze uplatnit nejvýše ${remaining.toFixed(2)} Kč.`);
+
+      const created = await tx.invoiceAdvanceApplication.create({
+        data: { finalInvoiceId: target.id, advanceInvoiceId: advance.id, amount: Math.round(amount * 100) / 100 },
+      });
+
+      const newAppliedToTarget = appliedToTarget + amount;
+      const newCovered = paidByPayments + newAppliedToTarget;
+      const status = newCovered >= Number(target.total) - 0.005 ? "PAID" : newCovered > 0.005 ? "PARTIALLY_PAID" : "ISSUED";
+      await tx.invoice.update({ where: { id: target.id }, data: { status } });
+
+      const newAdvanceApplied = appliedFromAdvance + amount;
+      const advanceStatus = newAdvanceApplied >= Number(advance.paidAmount) - 0.005
+        ? "PAID"
+        : Number(advance.paidAmount) > 0.005
+          ? "PARTIALLY_PAID"
+          : "ISSUED";
+      await tx.invoice.update({ where: { id: advance.id }, data: { status: advanceStatus } });
+
+      await writeAudit(tx, {
+        companyId: membership.companyId,
+        userId: membership.userId,
+        action: "APPLY_ADVANCE",
+        entity: "INVOICE_ADVANCE_APPLICATION",
+        entityId: created.id,
+        details: JSON.stringify({ finalInvoiceId: target.id, advanceInvoiceId: advance.id, amount }),
+      });
+
+      return created;
+    });
+
+    return NextResponse.json({ application }, { status: 201 });
+  } catch (error) {
+    console.error("POST /api/invoices/[id] advance failed:", error);
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Nepodařilo se uplatnit zálohu." }, { status: 500 });
+  }
+}
