@@ -86,6 +86,17 @@ export default function FakturyPage() {
     const amount = Number(value); return sum + (Number.isFinite(amount) && amount > 0 ? amount : 0);
   }, 0);
 
+  function updateAdvanceAmount(id: string, value: string) {
+    const maxForAdvance = customerAdvances.find(a => a.id === id)?.available ?? 0;
+    const otherSelected = Object.entries(advanceAmounts)
+      .filter(([advanceId]) => advanceId !== id)
+      .reduce((sum, [, amount]) => sum + Math.max(0, Number(amount) || 0), 0);
+    const remainingInvoice = Math.max(0, calculation.total - otherSelected);
+    const numeric = Number(value);
+    const clamped = Number.isFinite(numeric) ? Math.min(Math.max(0, numeric), maxForAdvance, remainingInvoice) : 0;
+    setAdvanceAmounts(current => ({ ...current, [id]: clamped > 0 ? clamped.toFixed(2) : "" }));
+  }
+
   function updateItem(index: number, field: keyof ItemForm, value: string) {
     setForm(current => ({ ...current, items: current.items.map((item, i) => i === index ? { ...item, [field]: value } : item) }));
   }
@@ -192,7 +203,7 @@ export default function FakturyPage() {
             customerAdvances.length === 0 ? <p className="table-muted">U tohoto zákazníka není žádná záloha s volnou částkou k započtení.</p> :
             <div className="advance-settlement-list">{customerAdvances.map(a => <div className="advance-settlement-row" key={a.id}>
               <div><strong>{a.number ?? "Záloha"}</strong><span>{new Date(a.issueDate).toLocaleDateString("cs-CZ")} · k započtení {a.available.toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</span></div>
-              <input type="number" min="0" max={Math.min(a.available, calculation.total).toFixed(2)} step="0.01" placeholder="0,00" value={advanceAmounts[a.id] ?? ""} onChange={e=>setAdvanceAmounts({...advanceAmounts,[a.id]:e.target.value})}/>
+              <input type="number" min="0" max={Math.min(a.available, calculation.total).toFixed(2)} step="0.01" placeholder="0,00" value={advanceAmounts[a.id] ?? ""} onChange={e=>updateAdvanceAmount(a.id,e.target.value)}/>
             </div>)}</div>}
           {selectedAdvanceTotal > 0 && <div className="advance-settlement-total"><span>Započtené zálohy</span><strong>− {selectedAdvanceTotal.toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</strong></div>}
           {mode === "final" && <div className="advance-settlement-total"><span>K úhradě po zálohách</span><strong>{Math.max(0, calculation.total-selectedAdvanceTotal).toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</strong></div>}
