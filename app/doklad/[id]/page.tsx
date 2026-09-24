@@ -201,6 +201,8 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
         <div className="print-payment">
           <span className="print-label">PLATEBNÍ ÚDAJE</span>
           <div>Způsob úhrady: <strong>{methodText[invoice.paymentMethod] ?? invoice.paymentMethod}</strong></div>
+          {company.bankAccount && company.bankCode && <div>Bankovní účet: <strong>{company.bankAccount}/{company.bankCode}</strong></div>}
+          {company.iban && <div>IBAN: <strong>{company.iban}</strong></div>}
           <div>Variabilní symbol: <strong>{invoice.variableSymbol ?? invoice.number ?? "-"}</strong></div>
           {invoice.constantSymbol && <div>Konstantní symbol: <strong>{invoice.constantSymbol}</strong></div>}
           {invoice.specificSymbol && <div>Specifický symbol: <strong>{invoice.specificSymbol}</strong></div>}
