@@ -457,6 +457,31 @@ button {
     border-bottom:1px solid #ddd;
   }
   .print-settlement { color:#444; }
+  .print-advances {
+    display: block !important;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #ddd;
+  }
+  .print-advances > .print-label {
+    display: block;
+    margin-bottom: 5px;
+  }
+  .print-advances-list {
+    display: grid;
+    gap: 0;
+  }
+  .print-advance-row {
+    display: grid !important;
+    grid-template-columns: 1.1fr 1.5fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 8.5pt;
+  }
+  .print-advance-row > span:nth-child(2) { color: #555; }
+  .print-advance-row > strong:last-child { white-space: nowrap; text-align: right; }
   .print-total-grand {
     margin-top:4px;
     padding:12px 0 !important;
