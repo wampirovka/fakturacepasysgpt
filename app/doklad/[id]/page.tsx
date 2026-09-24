@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
@@ -39,6 +39,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
   const [availableAdvances, setAvailableAdvances] = useState<any[]>([]);
   const [selectedAdvanceId, setSelectedAdvanceId] = useState("");
   const [advanceAmount, setAdvanceAmount] = useState("");
+  const advanceAmountInput = useRef<HTMLInputElement>(null);
   const [applyingAdvance, setApplyingAdvance] = useState(false);
 
   useEffect(() => {
@@ -103,7 +104,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
 
   async function applyAdvance() {
     if (!invoice || !selectedAdvanceId) return;
-    const amount = Number(advanceAmount);
+    const amount = Number(advanceAmountInput.current?.value ?? advanceAmount);
     if (!Number.isFinite(amount) || amount <= 0) { setMessage("Zadejte částku zálohy větší než 0."); return; }
     setApplyingAdvance(true); setMessage("");
     try {
@@ -274,7 +275,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
           <option value="">Vyberte zálohu</option>
           {availableAdvances.map((a:any)=><option key={a.id} value={a.id}>{a.number ?? a.id} · k uplatnění {Number(a.availableToApply).toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</option>)}
         </select></div>
-        <div className="auth-field"><label>Částka k uplatnění</label><input type="text" inputMode="numeric" value={advanceAmount} onChange={e=>setAdvanceAmount(e.target.value)} /></div>
+        <div className="auth-field"><label>Částka k uplatnění</label><input key={selectedAdvanceId || "no-advance"} ref={advanceAmountInput} type="text" inputMode="decimal" defaultValue={advanceAmount} autoComplete="off" /></div>
         <div className="customer-actions"><button className="button button-primary" onClick={applyAdvance} disabled={applyingAdvance || !selectedAdvanceId}>{applyingAdvance ? "Uplatňuji…" : "Uplatnit zálohu"}</button></div>
       </div>
     </section>}
