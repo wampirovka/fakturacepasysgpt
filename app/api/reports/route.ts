@@ -17,10 +17,11 @@ export async function GET(request: Request) {
   const year = Number(searchParams.get("year") ?? new Date().getFullYear());
   if (!Number.isInteger(year) || year < 2000 || year > 2200) return NextResponse.json({ error: "Neplatný rok." }, { status: 400 });
   const from = new Date(year, 0, 1); const to = new Date(year + 1, 0, 1);
-  const [invoices, payments, cashDocuments] = await Promise.all([
+  const [invoices, payments, cashDocuments, advanceApplications] = await Promise.all([
     prisma.invoice.findMany({ where: { companyId: membership.companyId, issueDate: { gte: from, lt: to }, type: { not: "ADVANCE" } }, select: { total: true, paidAmount: true, status: true, issueDate: true } }),
     prisma.payment.findMany({ where: { companyId: membership.companyId, paidAt: { gte: from, lt: to } }, select: { amount: true, paidAt: true } }),
     prisma.cashDocument.findMany({ where: { companyId: membership.companyId, date: { gte: from, lt: to } }, select: { amount: true } }),
+    prisma.invoiceAdvanceApplication.findMany({ where: { finalInvoice: { companyId: membership.companyId }, createdAt: { gte: from, lt: to } }, select: { amount: true } }),
   ]);
   const month = Array.from({ length: 12 }, (_, i) => ({ month: i + 1, invoiced: 0, paid: 0 }));
   for (const invoice of invoices) month[new Date(invoice.issueDate).getMonth()].invoiced += Number(invoice.total);
@@ -34,6 +35,7 @@ export async function GET(request: Request) {
     outstanding,
     overdue,
     cash: cashDocuments.reduce((s, x) => s + Number(x.amount), 0),
+    settledAdvances: advanceApplications.reduce((s, x) => s + Number(x.amount), 0),
     invoiceCount: invoices.length,
     month,
   });
