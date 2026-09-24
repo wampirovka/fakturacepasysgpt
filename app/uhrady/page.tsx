@@ -14,6 +14,8 @@ export default function UhradyPage() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [search, setSearch] = useState("");
+  const [methodFilter, setMethodFilter] = useState("ALL");
   const [form, setForm] = useState({ invoiceId: "", amount: "", paidAt: new Date().toISOString().slice(0, 10), method: "BANK_TRANSFER", note: "" });
 
   async function load() {
@@ -26,6 +28,13 @@ export default function UhradyPage() {
   }
 
   useEffect(() => { load().catch(() => setMessage("Nepodařilo se načíst data.")); }, []);
+
+  const filteredPayments = payments.filter((p) => {
+    const q = search.trim().toLowerCase();
+    const matchesSearch = !q || [p.invoice.number ?? "", p.invoice.customer?.name ?? "", p.cashDocument?.number ?? ""].some((v) => v.toLowerCase().includes(q));
+    const matchesMethod = methodFilter === "ALL" || p.method === methodFilter;
+    return matchesSearch && matchesMethod;
+  });
 
   async function deletePayment(id: string, amount: string | number) {
     if (!window.confirm(`Opravdu chcete smazat úhradu ${Number(amount).toLocaleString("cs-CZ", { minimumFractionDigits: 2 })} Kč?`)) return;
@@ -77,9 +86,15 @@ export default function UhradyPage() {
       <div className="invoice-form-actions"><button className="button button-secondary" type="button" onClick={() => setOpen(false)}>Zrušit</button><button className="button button-primary" disabled={saving}>{saving ? "Ukládám…" : "Zadat úhradu"}</button></div>
     </form>}
 
-    <section className="panel"><div className="panel-header"><div><h2>Historie úhrad</h2><span>{payments.length} plateb</span></div></div>
+    <section className="panel"><div className="panel-header"><div><h2>Historie úhrad</h2><span>{filteredPayments.length} z {payments.length} plateb</span></div></div>
+      <div className="document-filters">
+        <input className="customer-search" placeholder="Hledat fakturu, zákazníka nebo pokladní doklad…" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <select value={methodFilter} onChange={(e) => setMethodFilter(e.target.value)}>
+          <option value="ALL">Všechny způsoby</option><option value="BANK_TRANSFER">Bankovní převod</option><option value="CASH">Hotově</option><option value="CARD">Kartou</option><option value="OTHER">Jiné</option>
+        </select>
+      </div>
       <div className="table-wrap"><table className="data-table"><thead><tr><th>Datum</th><th>Faktura</th><th>Zákazník</th><th>Způsob</th><th>Pokladní doklad</th><th className="amount">Částka</th><th></th></tr></thead>
-      <tbody>{payments.length ? payments.map(p => <tr key={p.id}><td>{new Date(p.paidAt).toLocaleDateString("cs-CZ")}</td><td><strong>{p.invoice.number ?? "-"}</strong></td><td>{p.invoice.customer?.name ?? "-"}</td><td>{methods[p.method] ?? p.method}</td><td>{p.cashDocument?.number ?? "-"}</td><td className="amount">{Number(p.amount).toLocaleString("cs-CZ", { minimumFractionDigits: 2 })} Kč</td><td><button className="button button-danger button-small" onClick={() => deletePayment(p.id, p.amount)}>Smazat</button></td></tr>) : <tr><td colSpan={7} className="table-muted">Zatím nejsou evidované žádné úhrady.</td></tr>}</tbody></table></div>
+      <tbody>{filteredPayments.length ? filteredPayments.map(p => <tr key={p.id}><td>{new Date(p.paidAt).toLocaleDateString("cs-CZ")}</td><td><strong>{p.invoice.number ?? "-"}</strong></td><td>{p.invoice.customer?.name ?? "-"}</td><td>{methods[p.method] ?? p.method}</td><td>{p.cashDocument?.number ?? "-"}</td><td className="amount">{Number(p.amount).toLocaleString("cs-CZ", { minimumFractionDigits: 2 })} Kč</td><td><button className="button button-danger button-small" onClick={() => deletePayment(p.id, p.amount)}>Smazat</button></td></tr>) : <tr><td colSpan={7} className="table-muted">Zatím nejsou evidované žádné úhrady.</td></tr>}</tbody></table></div>
     </section>
   </div></AppShell>;
 }
