@@ -81,6 +81,7 @@ model Company {
   bankAccount     String?
   bankCode        String?
   iban            String?
+  exportStyle     String            @default("CLASSIC")
   vatStatus       String            @default("NON_VAT_PAYER")
   defaultDueDays  Int               @default(14)
   createdAt       DateTime          @default(now())
