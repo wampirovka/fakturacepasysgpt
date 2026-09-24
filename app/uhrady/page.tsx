@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 
@@ -94,7 +95,7 @@ export default function UhradyPage() {
         </select>
       </div>
       <div className="table-wrap"><table className="data-table"><thead><tr><th>Datum</th><th>Faktura</th><th>Zákazník</th><th>Způsob</th><th>Pokladní doklad</th><th className="amount">Částka</th><th></th></tr></thead>
-      <tbody>{filteredPayments.length ? filteredPayments.map(p => <tr key={p.id}><td>{new Date(p.paidAt).toLocaleDateString("cs-CZ")}</td><td><strong>{p.invoice.number ?? "-"}</strong></td><td>{p.invoice.customer?.name ?? "-"}</td><td>{methods[p.method] ?? p.method}</td><td>{p.cashDocument?.number ?? "-"}</td><td className="amount">{Number(p.amount).toLocaleString("cs-CZ", { minimumFractionDigits: 2 })} Kč</td><td><button className="button button-danger button-small" onClick={() => deletePayment(p.id, p.amount)}>Smazat</button></td></tr>) : <tr><td colSpan={7} className="table-muted">Zatím nejsou evidované žádné úhrady.</td></tr>}</tbody></table></div>
+      <tbody>{filteredPayments.length ? filteredPayments.map(p => <tr key={p.id}><td>{new Date(p.paidAt).toLocaleDateString("cs-CZ")}</td><td><Link className="document-number-link" href={`/doklad/${p.invoice.id}?edit=1`}><strong>{p.invoice.number ?? "-"}</strong></Link></td><td>{p.invoice.customer?.name ?? "-"}</td><td>{methods[p.method] ?? p.method}</td><td>{p.cashDocument?.number ?? "-"}</td><td className="amount">{Number(p.amount).toLocaleString("cs-CZ", { minimumFractionDigits: 2 })} Kč</td><td><div className="row-actions"><Link className="button button-secondary button-small" href={`/uhrady/${p.id}`}>Upravit úhradu</Link><button className="button button-secondary button-small button-delete-subtle" onClick={() => deletePayment(p.id, p.amount)}>Smazat</button></div></td></tr>) : <tr><td colSpan={7} className="table-muted">Zatím nejsou evidované žádné úhrady.</td></tr>}</tbody></table></div>
     </section>
   </div></AppShell>;
 }
