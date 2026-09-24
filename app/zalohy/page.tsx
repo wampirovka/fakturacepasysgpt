@@ -32,6 +32,8 @@ export default function ZalohyPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [vatPayer, setVatPayer] = useState(false);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
   const [form, setForm] = useState({
     customerId: "",
     description: "Záloha na zakázku",
@@ -53,6 +55,13 @@ export default function ZalohyPage() {
   }
 
   useEffect(() => { load().catch(() => setMessage("Nepodařilo se načíst data.")); }, []);
+
+  const filteredAdvances = advances.filter((a) => {
+    const q = search.trim().toLowerCase();
+    const matchesSearch = !q || [a.number ?? "", a.customer?.name ?? ""].some((v) => v.toLowerCase().includes(q));
+    const matchesStatus = statusFilter === "ALL" || a.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   async function deleteAdvance(id: string, number: string | null) {
     if (!window.confirm(`Opravdu chcete smazat zálohovou fakturu ${number ?? ""}? Tato akce je nevratná.`)) return;
@@ -109,11 +118,17 @@ export default function ZalohyPage() {
       <div className="invoice-form-actions"><button className="button button-secondary" type="button" onClick={() => setOpen(false)}>Zrušit</button><button className="button button-primary" disabled={saving}>{saving ? "Vytvářím…" : "Vytvořit zálohovou fakturu"}</button></div>
     </form>}
 
-    <section className="panel"><div className="panel-header"><div><h2>Seznam zálohových faktur</h2><span>{advances.length} dokladů</span></div></div>
+    <section className="panel"><div className="panel-header"><div><h2>Seznam zálohových faktur</h2><span>{filteredAdvances.length} z {advances.length} dokladů</span></div></div>
+      <div className="document-filters">
+        <input className="customer-search" placeholder="Hledat číslo nebo zákazníka…" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="ALL">Všechny stavy</option><option value="ISSUED">Vystavené</option><option value="PARTIALLY_PAID">Částečně uhrazené</option><option value="PAID">Uhrazené</option><option value="OVERDUE">Po splatnosti</option><option value="CANCELLED">Stornované</option>
+        </select>
+      </div>
       <div className="table-wrap"><table className="data-table"><thead><tr><th>Číslo</th><th>Zákazník</th><th>Vystavení</th><th>Splatnost</th><th>Stav</th><th>Započteno</th><th></th><th className="amount">Částka</th></tr></thead>
-      <tbody>{advances.length ? advances.map(a => {
+      <tbody>{filteredAdvances.length ? filteredAdvances.map(a => {
         const applied = a.appliedToFinalInvoices.reduce((sum, x) => sum + Number(x.amount), 0);
-        return <tr key={a.id}><td><strong>{a.number ?? "Rozpracovaná"}</strong></td><td>{a.customer?.name ?? "Neuvedený zákazník"}</td><td>{new Date(a.issueDate).toLocaleDateString("cs-CZ")}</td><td>{a.dueDate ? new Date(a.dueDate).toLocaleDateString("cs-CZ") : "-"}</td><td><span className="status status-due">{statusText[a.status] ?? a.status}</span></td><td>{applied.toLocaleString("cs-CZ", { minimumFractionDigits: 2 })} Kč</td><td><div className="row-actions"><Link className="button button-secondary button-small" href={`/doklad/${a.id}`}>Detail</Link><Link className="button button-secondary button-small" href={`/doklad/${a.id}?edit=1`}>Upravit</Link><button className="button button-danger button-small" onClick={() => deleteAdvance(a.id, a.number)}>Smazat</button></div></td><td className="amount">{Number(a.total).toLocaleString("cs-CZ", { minimumFractionDigits: 2 })} Kč</td></tr>;
+        return <tr key={a.id}><td><strong>{a.number ?? "Rozpracovaná"}</strong></td><td>{a.customer?.name ?? "Neuvedený zákazník"}</td><td>{new Date(a.issueDate).toLocaleDateString("cs-CZ")}</td><td>{a.dueDate ? new Date(a.dueDate).toLocaleDateString("cs-CZ") : "-"}</td><td><span className={`status ${a.status === "PAID" ? "status-paid" : a.status === "OVERDUE" ? "status-overdue" : a.status === "CANCELLED" ? "status-muted" : "status-due"}`}>{statusText[a.status] ?? a.status}</span></td><td>{applied.toLocaleString("cs-CZ", { minimumFractionDigits: 2 })} Kč</td><td><div className="row-actions"><Link className="button button-secondary button-small" href={`/doklad/${a.id}`}>Detail</Link><Link className="button button-secondary button-small" href={`/doklad/${a.id}?edit=1`}>Upravit</Link><button className="button button-danger button-small" onClick={() => deleteAdvance(a.id, a.number)}>Smazat</button></div></td><td className="amount">{Number(a.total).toLocaleString("cs-CZ", { minimumFractionDigits: 2 })} Kč</td></tr>;
       }) : <tr><td colSpan={8} className="table-muted">Zatím tu nejsou žádné zálohové faktury.</td></tr>}</tbody></table></div>
     </section>
   </div></AppShell>;
