@@ -34,7 +34,10 @@ async function getAccess(id: string) {
     },
   });
   if (!invoice) return { error: NextResponse.json({ error: "Doklad nebyl nalezen." }, { status: 404 }) };
-  return { membership, invoice };
+  const coveredByPayments = invoice.payments.reduce((sum, item) => sum + Number(item.amount), 0);
+  const coveredByAdvances = invoice.advanceApplications.reduce((sum, item) => sum + Number(item.amount), 0);
+  const effectiveStatus = effectiveInvoiceStatus({ ...invoice, paidAmount: coveredByPayments + coveredByAdvances });
+  return { membership, invoice: { ...invoice, status: effectiveStatus } };
 }
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
