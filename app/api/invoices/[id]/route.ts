@@ -57,6 +57,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return NextResponse.json({ error: "Nemáte oprávnění upravovat doklady." }, { status: 403 });
   }
 
+  let body: Record<string, unknown>;
+  try { body = await request.json(); } catch { return NextResponse.json({ error: "Neplatná data formuláře." }, { status: 400 }); }
+
   const forceEdit = body.forceEdit === true;
   const isLocked = invoice.type === "CORRECTIVE" || invoice.payments.length > 0 || invoice.advanceApplications.length > 0;
 
@@ -71,7 +74,6 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (invoice.advanceApplications.length > 0 && typeof body.customerId === "string" && body.customerId !== invoice.customerId) {
     return NextResponse.json({ error: "U dokladu s vypořádanou zálohou nelze změnit zákazníka." }, { status: 409 });
   }
-  try { body = await request.json(); } catch { return NextResponse.json({ error: "Neplatná data formuláře." }, { status: 400 }); }
 
   const customerId = typeof body.customerId === "string" && body.customerId ? body.customerId : null;
   const requestedNumber = typeof body.number === "string" ? body.number.trim() : invoice.number;
