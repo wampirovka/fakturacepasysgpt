@@ -91,6 +91,16 @@ export default function FakturyPage() {
     await load(); setMessage("Faktura byla smazána.");
   }
 
+  async function createCorrective(id: string, number: string | null) {
+    if (!window.confirm(`Vytvořit opravný doklad (storno) k faktuře ${number ?? ""}? Původní doklad zůstane zachovaný.`)) return;
+    setMessage("");
+    const r = await fetch("/api/invoices/" + id + "/corrective", { method: "POST" });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) { setMessage(data.error ?? "Opravný doklad se nepodařilo vytvořit."); return; }
+    await load();
+    setMessage(`Opravný doklad ${data.invoice.number} byl vytvořen.`);
+  }
+
   async function createInvoice(event: React.FormEvent) {
     event.preventDefault(); setSaving(true); setMessage("");
     try {
@@ -185,7 +195,7 @@ export default function FakturyPage() {
         <tbody>{invoices.length ? invoices.map(i => <tr key={i.id}>
           <td><strong>{i.number ?? "Rozpracovaná"}</strong></td><td>{i.type === "ADVANCE" ? "Zálohová" : i.type === "CORRECTIVE" ? "Opravná" : "Faktura"}</td><td>{i.customer?.name ?? "Neuvedený zákazník"}</td>
           <td>{new Date(i.issueDate).toLocaleDateString("cs-CZ")}</td><td>{i.dueDate ? new Date(i.dueDate).toLocaleDateString("cs-CZ") : "-"}</td><td><span className="status status-due">{statusText[i.status] ?? i.status}</span></td>
-          <td><div className="row-actions"><Link className="button button-secondary button-small" href={`/doklad/${i.id}`}>Detail</Link><Link className="button button-secondary button-small" href={`/doklad/${i.id}?edit=1`}>Upravit</Link><button className="button button-danger button-small" onClick={() => deleteInvoice(i.id, i.number)}>Smazat</button></div></td>
+          <td><div className="row-actions"><Link className="button button-secondary button-small" href={`/doklad/${i.id}`}>Detail</Link>{i.type !== "CORRECTIVE" && i.status !== "CANCELLED" && <button className="button button-secondary button-small" onClick={() => createCorrective(i.id, i.number)}>Opravný doklad</button>}<Link className="button button-secondary button-small" href={`/doklad/${i.id}?edit=1`}>Upravit</Link><button className="button button-danger button-small" onClick={() => deleteInvoice(i.id, i.number)}>Smazat</button></div></td>
           <td className="amount">{Number(i.total).toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</td>
         </tr>) : <tr><td colSpan={8} className="table-muted">Zatím tu nejsou žádné faktury.</td></tr>}</tbody></table></div>
       </section>
