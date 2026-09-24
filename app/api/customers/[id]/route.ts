@@ -14,7 +14,7 @@ async function getMembership() {
   return { session, membership };
 }
 
-const text = (value: unknown) =>
+export async function GET(\n  _request: Request,\n  context: { params: Promise<{ id: string }> },\n) {\n  const { session, membership } = await getMembership();\n  const { id } = await context.params;\n  if (!session) return NextResponse.json({ error: "Nepřihlášený uživatel." }, { status: 401 });\n  if (!membership) return NextResponse.json({ error: "Uživatel nemá přiřazenou firmu." }, { status: 404 });\n\n  const customer = await prisma.customer.findFirst({\n    where: { id, companyId: membership.companyId },\n    include: {\n      invoices: {\n        orderBy: [{ issueDate: "desc" }, { createdAt: "desc" }],\n        include: { payments: { orderBy: { paidAt: "desc" } } },\n      },\n    },\n  });\n  if (!customer) return NextResponse.json({ error: "Zákazník nebyl nalezen." }, { status: 404 });\n\n  const invoiced = customer.invoices.filter(i => i.type !== "ADVANCE").reduce((s, i) => s + Number(i.total), 0);\n  const paid = customer.invoices.filter(i => i.type !== "ADVANCE").reduce((s, i) => s + Number(i.paidAmount), 0);\n  const advances = customer.invoices.filter(i => i.type === "ADVANCE");\n  return NextResponse.json({ customer, summary: { invoiced, paid, outstanding: Math.max(0, invoiced - paid), advances: advances.reduce((s, i) => s + Number(i.total), 0) } });\n}\n\nconst text = (value: unknown) =>
   typeof value === "string" && value.trim() ? value.trim() : null;
 
 export async function PATCH(
