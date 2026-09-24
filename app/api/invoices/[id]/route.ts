@@ -57,19 +57,20 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return NextResponse.json({ error: "Nemáte oprávnění upravovat doklady." }, { status: 403 });
   }
 
-  if (invoice.type === "CORRECTIVE") {
-    return NextResponse.json({ error: "Opravný doklad je po vystavení neměnný." }, { status: 409 });
-  }
+  const forceEdit = body.forceEdit === true;
+  const isLocked = invoice.type === "CORRECTIVE" || invoice.payments.length > 0 || invoice.advanceApplications.length > 0;
 
-  if (invoice.payments.length > 0 || invoice.advanceApplications.length > 0) {
+  if (isLocked && !forceEdit) {
     return NextResponse.json({
-      error: invoice.advanceApplications.length > 0
-        ? "Doklad už obsahuje vypořádanou zálohu a nelze ho upravit."
-        : "Doklad už má zaevidovanou úhradu a nelze ho upravit.",
+      error: invoice.type === "CORRECTIVE"
+        ? "Opravný doklad je uzamčený. Pro změnu použijte režim opravy."
+        : "Doklad je uzamčený. Pro změnu použijte režim opravy.",
     }, { status: 409 });
   }
 
-  let body: Record<string, unknown>;
+  if (invoice.advanceApplications.length > 0 && typeof body.customerId === "string" && body.customerId !== invoice.customerId) {
+    return NextResponse.json({ error: "U dokladu s vypořádanou zálohou nelze změnit zákazníka." }, { status: 409 });
+  }
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Neplatná data formuláře." }, { status: 400 }); }
 
   const customerId = typeof body.customerId === "string" && body.customerId ? body.customerId : null;
@@ -108,6 +109,12 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         vatRate: null,
       }];
       const calculation = calculateInvoiceItems(parseInvoiceItems(rawItems), company.vatStatus === "VAT_PAYER");
+      const coveredByPayments = invoice.payments.reduce((sum, item) => sum + Number(item.amount), 0);
+      const coveredByAdvances = invoice.advanceApplications.reduce((sum, item) => sum + Number(item.amount), 0);
+      const coveredAmount = coveredByPayments + coveredByAdvances;
+      if (calculation.total < coveredAmount - 0.005) {
+        throw new Error(`Celková částka dokladu nemůže být nižší než již uhrazených ${coveredAmount.toFixed(2)} Kč.`);
+      }
       const dueDate = new Date(issueDate);
       dueDate.setDate(dueDate.getDate() + dueDays);
 
@@ -123,6 +130,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
           variableSymbol: requestedNumber,
           subtotal: calculation.subtotal,
           total: calculation.total,
+          paidAmount: coveredAmount,
           sellerName: company.name,
           sellerIco: company.ico,
           sellerDic: company.dic,
@@ -158,7 +166,14 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         include: { items: { orderBy: { position: "asc" } }, customer: true },
       });
 
-      await writeAudit(tx, { companyId: membership.companyId, userId: membership.userId, action: "UPDATE", entity: invoice.type === "ADVANCE" ? "ADVANCE" : "INVOICE", entityId: invoice.id, details: requestedNumber });
+      await writeAudit(tx, {
+        companyId: membership.companyId,
+        userId: membership.userId,
+        action: forceEdit && isLocked ? "UPDATE_LOCKED" : "UPDATE",
+        entity: "INVOICE",
+        entityId: invoice.id,
+        details: JSON.stringify({ number: requestedNumber, lockedRepair: forceEdit && isLocked }),
+      });
       return updatedInvoice;
     });
 
