@@ -153,7 +153,7 @@ export default function NastaveniPage() {
               Údaje firmy, které se používají pro fakturaci a další doklady.
             </p>
           </div>
-          <div className="customer-actions"><Link className="button button-secondary" href="/nastaveni/ciselne-rady">Číselné řady</Link><Link className="button button-secondary" href="/audit">Audit</Link><Link className="button button-secondary" href="/nastaveni/export">Export dat</Link></div>
+          <div className="customer-actions"><Link className="button button-secondary" href="/nastaveni/ciselne-rady">Číselné řady</Link><Link className="button button-secondary" href="/audit">Audit</Link><Link className="button button-secondary" href="/nastaveni/export">Export dat</Link><Link className="button button-secondary" href="/nastaveni/import">Import dat</Link></div>
         </header>
 
         {message && (
