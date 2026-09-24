@@ -11,6 +11,7 @@ type Item = { id: string; description: string; quantity: string | number; unit: 
 type Payment = { id: string; amount: string | number; paidAt: string; method: string; note: string | null };
 type Application = { id: string; amount: string | number; advanceInvoice: { id: string; number: string | null } };
 type ItemForm = { description: string; quantity: string; unit: string; unitPrice: string; discount: string; vatRate: string };
+type ExportStyle = "CLASSIC" | "POHODA" | "IDOKLAD";
 type Invoice = {
   id: string; number: string | null; type: string; status: string; issueDate: string; dueDate: string | null; taxableDate: string | null;
   subtotal: string | number; total: string | number; paidAmount: string | number; paymentMethod: string; variableSymbol: string | null; constantSymbol: string | null; specificSymbol: string | null; note: string | null;
@@ -28,7 +29,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [vatPayer, setVatPayer] = useState(false);
-  const [company, setCompany] = useState<{logoUrl?: string|null; bankAccount?: string|null; bankCode?: string|null; iban?: string|null}>({});
+  const [company, setCompany] = useState<{logoUrl?: string|null; bankAccount?: string|null; bankCode?: string|null; iban?: string|null; exportStyle?: ExportStyle}>({});
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState("");
@@ -172,7 +173,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
 
     <section className="panel detail-card print-hide"><div className="panel-header"><div><h2>Úhrady</h2><span>{invoice.payments.length} záznamů</span></div></div>{invoice.payments.length?<div className="table-wrap"><table className="data-table"><thead><tr><th>Datum</th><th>Způsob</th><th>Poznámka</th><th className="amount">Částka</th></tr></thead><tbody>{invoice.payments.map(p=><tr key={p.id}><td>{new Date(p.paidAt).toLocaleDateString("cs-CZ")}</td><td>{methodText[p.method]??p.method}</td><td>{p.note??"-"}</td><td className="amount">{Number(p.amount).toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</td></tr>)}</tbody></table></div>:<p className="detail-empty">Zatím bez úhrady.</p>}</section>
 
-    <section className="print-invoice">
+    <section className={`print-invoice print-style-${(company.exportStyle ?? "CLASSIC").toLowerCase()}`}>
       <div className="print-topline">
         <div className="print-brand">{company.logoUrl && <img className="print-logo" src={company.logoUrl} alt="" />}<div><strong>{invoice.sellerName ?? "Fakturace"}</strong><span>{invoice.sellerStreet ?? ""}{invoice.sellerCity ? (invoice.sellerStreet ? ", " : "") + invoice.sellerCity : ""}</span></div></div>
         <div className="print-type"><span>{vatPayer ? "DAŇOVÝ DOKLAD" : "FAKTURA"}</span><strong>{isAdvance ? "ZÁLOHOVÁ FAKTURA" : "FAKTURA"}</strong></div>
