@@ -10,6 +10,7 @@ export function effectiveInvoiceStatus(invoice: {
   if (status === "DRAFT" || status === "CANCELLED") return status;
   const total = Number(invoice.total);
   const paid = Number(invoice.paidAmount);
+  if (total < 0) return "ISSUED";
   if (paid >= total - 0.005) return "PAID";
   if (paid > 0.005) {
     if (invoice.dueDate && new Date(invoice.dueDate).getTime() < Date.now()) return "OVERDUE";
