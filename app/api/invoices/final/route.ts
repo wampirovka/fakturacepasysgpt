@@ -162,6 +162,21 @@ export async function POST(request: Request) {
           },
         },
       });
+      for (const application of checkedApplications) {
+        const advance = await tx.invoice.findUnique({
+          where: { id: application.advanceInvoiceId },
+          include: { appliedToFinalInvoices: { select: { amount: true } } },
+        });
+        if (advance) {
+          const applied = advance.appliedToFinalInvoices.reduce((sum, item) => sum + Number(item.amount), 0);
+          const paid = Number(advance.paidAmount);
+          const status = paid >= Number(advance.total) - 0.005
+            ? (applied >= paid - 0.005 ? "PAID" : "PARTIALLY_PAID")
+            : (paid > 0.005 ? "PARTIALLY_PAID" : "ISSUED");
+          await tx.invoice.update({ where: { id: advance.id }, data: { status } });
+        }
+      }
+
       await writeAudit(tx, { companyId: company.id, userId: membership.userId, action: "CREATE_FINAL", entity: "INVOICE", entityId: created.id, details: created.number });
       return created;
     });
