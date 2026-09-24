@@ -27,6 +27,10 @@ async function getAccess(id: string) {
         include: { advanceInvoice: { select: { id: true, number: true } } },
         orderBy: { createdAt: "asc" },
       },
+      appliedToFinalInvoices: {
+        include: { finalInvoice: { select: { id: true, number: true } } },
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
   if (!invoice) return { error: NextResponse.json({ error: "Doklad nebyl nalezen." }, { status: 404 }) };
