@@ -145,6 +145,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         include: { items: { orderBy: { position: "asc" } }, customer: true },
       });
 
+      await writeAudit(tx, { companyId: membership.companyId, userId: membership.userId, action: "UPDATE", entity: invoice.type === "ADVANCE" ? "ADVANCE" : "INVOICE", entityId: invoice.id, details: requestedNumber });
       return updatedInvoice;
     });
 
