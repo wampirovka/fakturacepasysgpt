@@ -24,7 +24,7 @@ async function getAccess(id: string) {
       correctiveOf: { select: { id: true, number: true } },
       corrections: { select: { id: true, number: true, total: true } },
       advanceApplications: {
-        include: { advanceInvoice: { select: { id: true, number: true } } },
+        include: { advanceInvoice: { select: { id: true, number: true, payments: { select: { amount: true, paidAt: true }, orderBy: { paidAt: "asc" } } } } },
         orderBy: { createdAt: "asc" },
       },
       appliedToFinalInvoices: {
