@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
 import { reserveNumber } from "@/lib/numbering";
 import { calculateInvoiceItems, parseInvoiceItems } from "@/lib/invoice-calculation";
+import { effectiveInvoiceStatus } from "@/lib/invoice-status";
 
 async function getMembership() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -25,7 +26,7 @@ export async function GET() {
     orderBy: [{ issueDate: "desc" }, { createdAt: "desc" }],
   });
 
-  return NextResponse.json({ advances });
+  return NextResponse.json({ advances: advances.map(advance => ({ ...advance, status: effectiveInvoiceStatus(advance) })) });
 }
 
 export async function POST(request: Request) {
