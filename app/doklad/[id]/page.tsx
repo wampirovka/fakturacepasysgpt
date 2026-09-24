@@ -9,7 +9,7 @@ import { AppShell } from "@/components/app-shell";
 type Customer = { id: string; name: string; ico?: string | null; dic?: string | null; street?: string | null; city?: string | null; zip?: string | null; country?: string | null; email?: string | null; phone?: string | null };
 type Item = { id: string; description: string; quantity: string | number; unit: string; unitPrice: string | number; discount: string | number; vatRate: string | number | null; lineTotal: string | number };
 type Payment = { id: string; amount: string | number; paidAt: string; method: string; note: string | null };
-type Application = { id: string; amount: string | number; advanceInvoice: { id: string; number: string | null } };
+type Application = { id: string; amount: string | number; advanceInvoice: { id: string; number: string | null; payments: { amount: string | number; paidAt: string }[] } };
 type ItemForm = { description: string; quantity: string; unit: string; unitPrice: string; discount: string; vatRate: string };
 type ExportStyle = "CLASSIC" | "POHODA" | "IDOKLAD";
 type Invoice = {
@@ -260,7 +260,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
           <div><span>Základ</span><strong>{detailNet.toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</strong></div>
           {vatPayer&&<div><span>DPH</span><strong>{detailVat.toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</strong></div>}
           <div><span>Celkem za plnění</span><strong>{total.toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</strong></div>
-          {applied>0&&<div className="print-settlement"><span>Vypořádání záloh</span><strong>− {applied.toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</strong></div>}
+          {applied>0&&<div className="print-settlement"><span>Vypořádání záloh</span><strong>− {applied.toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</strong></div>}{invoice.advanceApplications.length>0&&<div className="print-advances"><span className="print-label">UHRAZENÉ ZÁLOHY ZAHRNUTÉ DO VYÚČTOVÁNÍ</span>{invoice.advanceApplications.map(a=><div key={a.id}><span><strong>{a.advanceInvoice.number ?? a.advanceInvoice.id}</strong> · datum úhrady: {a.advanceInvoice.payments.length ? a.advanceInvoice.payments.map(p=>new Date(p.paidAt).toLocaleDateString("cs-CZ")).join(", ") : "Neuvedeno"}</span><strong>− {Number(a.amount).toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</strong></div>)}</div>}
           <div className="print-total-grand"><span>K ÚHRADĚ</span><strong>{remaining.toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</strong></div>
         </div>
       </div>
@@ -279,7 +279,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
         <div className="customer-actions"><button className="button button-primary" onClick={applyAdvance} disabled={applyingAdvance || !selectedAdvanceId}>{applyingAdvance ? "Uplatňuji…" : "Uplatnit zálohu"}</button></div>
       </div>
     </section>}
-    {invoice.advanceApplications.length>0&&<section className="panel detail-card"><div className="panel-header"><div><h2>Vypořádání záloh</h2><span>Uhrazené zálohy započtené do tohoto vyúčtování.</span></div></div><div className="table-wrap"><table className="data-table"><thead><tr><th>Záloha</th><th className="amount">Uplatněno</th></tr></thead><tbody>{invoice.advanceApplications.map(a=><tr key={a.id}><td><Link href={`/doklad/${a.advanceInvoice.id}`}>{a.advanceInvoice.number??a.advanceInvoice.id}</Link></td><td className="amount">− {Number(a.amount).toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</td></tr>)}</tbody></table></div></section>}
+    {invoice.advanceApplications.length>0&&<section className="panel detail-card"><div className="panel-header"><div><h2>Vypořádání záloh</h2><span>Uhrazené zálohy započtené do tohoto vyúčtování.</span></div></div><div className="table-wrap"><table className="data-table"><thead><tr><th>Záloha</th><th>Datum úhrady</th><th className="amount">Uplatněno</th></tr></thead><tbody>{invoice.advanceApplications.map(a=><tr key={a.id}><td><Link href={`/doklad/${a.advanceInvoice.id}`}>{a.advanceInvoice.number??a.advanceInvoice.id}</Link></td><td>{a.advanceInvoice.payments.length ? a.advanceInvoice.payments.map(p=>new Date(p.paidAt).toLocaleDateString("cs-CZ")).join(", ") : "Neuvedeno"}</td><td className="amount">− {Number(a.amount).toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</td></tr>)}</tbody></table></div></section>}
   </div></AppShell>;
 }
 
