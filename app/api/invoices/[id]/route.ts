@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { calculateInvoiceItems, parseInvoiceItems } from "@/lib/invoice-calculation";
 
 async function getMembership() {
@@ -170,7 +171,10 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
   }
 
   try {
-    await prisma.invoice.delete({ where: { id: invoice.id } });
+    await prisma.$transaction(async tx => {
+      await tx.invoice.delete({ where: { id: invoice.id } });
+      await writeAudit(tx, { companyId: membership.companyId, userId: membership.userId, action: "DELETE", entity: invoice.type === "ADVANCE" ? "ADVANCE" : "INVOICE", entityId: invoice.id, details: invoice.number });
+    });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("DELETE /api/invoices/[id] failed:", error);
