@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 
-type CashDoc={id:string;number:string|null;date:string;amount:string|number;method:string;note:string|null;payment:{invoice:{id:string;number:string|null;customer:{name:string}|null}}|null};
+type CashDoc={id:string;number:string|null;date:string;amount:string|number;method:string;note:string|null;payment:{id:string;invoice:{id:string;number:string|null;customer:{name:string}|null}}|null};
 export default function PokladnaPage(){
   const [docs,setDocs]=useState<CashDoc[]>([]); const [balance,setBalance]=useState(0); const [message,setMessage]=useState(""); const [search,setSearch]=useState("");
   async function load(){const r=await fetch("/api/cash");const d=await r.json().catch(()=>({}));if(!r.ok){setMessage(d.error??"Pokladnu se nepodařilo načíst.");return;}setDocs(d.documents??[]);setBalance(Number(d.balance??0));}
