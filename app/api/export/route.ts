@@ -6,6 +6,7 @@ import { createZip } from "@/lib/zip";
 
 const ENTITY_KEYS = [
   "company",
+  "members",
   "customers",
   "invoices",
   "invoiceItems",
@@ -20,6 +21,8 @@ type EntityKey = (typeof ENTITY_KEYS)[number];
 
 const entityLabels: Record<EntityKey, string> = {
   company: "Firma",
+  members: "Členové firmy",
+  members: "Členové firmy",
   customers: "Zákazníci",
   invoices: "Faktury",
   invoiceItems: "Položky faktur",
@@ -76,6 +79,7 @@ export async function GET(request: Request) {
     cashDocuments: ["company", "payments", "invoices"],
     advanceApplications: ["company", "invoices"],
     numberingSeries: ["company"],
+    members: ["company"],
     customers: ["company"],
     auditLog: ["company"],
   };
@@ -86,10 +90,13 @@ export async function GET(request: Request) {
   const entities = [...entitySet];
   const companyId = membership.companyId;
 
-  const [company, customers, invoices, numberingSeries] = await Promise.all([
+  const [company, members, customers, invoices, numberingSeries] = await Promise.all([
     entities.includes("company")
       ? prisma.company.findUnique({ where: { id: companyId } })
       : null,
+    entities.includes("members")
+      ? prisma.companyMember.findMany({ where: { companyId }, include: { user: { select: { id: true, name: true, email: true } } }, orderBy: { createdAt: "asc" } })
+      : [],
     entities.includes("customers")
       ? prisma.customer.findMany({ where: { companyId }, orderBy: { createdAt: "asc" } })
       : [],
@@ -137,6 +144,7 @@ export async function GET(request: Request) {
       label: entityLabels[key],
       count:
         key === "company" ? (company ? 1 : 0) :
+        key === "members" ? members.length :
         key === "customers" ? customers.length :
         key === "invoices" ? invoices.length :
         key === "invoiceItems" ? invoiceItems.length :
@@ -154,6 +162,7 @@ export async function GET(request: Request) {
   };
 
   if (entities.includes("company") && company) files["company.json"] = jsonData([company]);
+  if (entities.includes("members")) files["members.json"] = jsonData(members);
   if (entities.includes("customers")) files["customers.json"] = jsonData(customers);
   if (entities.includes("invoices")) files["invoices.json"] = jsonData(invoices);
   if (entities.includes("invoiceItems")) files["invoiceItems.json"] = jsonData(invoiceItems);
