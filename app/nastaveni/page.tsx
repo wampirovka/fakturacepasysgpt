@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 
 type Company = {
@@ -152,6 +153,7 @@ export default function NastaveniPage() {
               Údaje firmy, které se používají pro fakturaci a další doklady.
             </p>
           </div>
+          <div className="customer-actions"><Link className="button button-secondary" href="/nastaveni/ciselne-rady">Číselné řady</Link><Link className="button button-secondary" href="/audit">Audit</Link></div>
         </header>
 
         {message && (
