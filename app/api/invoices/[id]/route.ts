@@ -184,10 +184,6 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
   if (invoice.payments.length > 0) {
     return NextResponse.json({ error: "Doklad nelze smazat, protože obsahuje zaevidovanou úhradu." }, { status: 409 });
   }
-  if (invoice.advanceApplications.length > 0) {
-    return NextResponse.json({ error: "Doklad nelze smazat, protože obsahuje vypořádanou zálohu." }, { status: 409 });
-  }
-
   try {
     await prisma.$transaction(async tx => {
       await tx.invoice.delete({ where: { id: invoice.id } });
