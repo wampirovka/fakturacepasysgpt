@@ -27,6 +27,14 @@ export default function UhradyPage() {
 
   useEffect(() => { load().catch(() => setMessage("Nepodařilo se načíst data.")); }, []);
 
+  async function deletePayment(id: string, amount: string | number) {
+    if (!window.confirm(`Opravdu chcete smazat úhradu ${Number(amount).toLocaleString("cs-CZ", { minimumFractionDigits: 2 })} Kč?`)) return;
+    const r = await fetch("/api/payments/" + id, { method: "DELETE" });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) { setMessage(data.error ?? "Úhradu se nepodařilo smazat."); return; }
+    await load(); setMessage("Úhrada byla smazána a částka byla vrácena do pohledávky.");
+  }
+
   async function createPayment(event: React.FormEvent) {
     event.preventDefault();
     setSaving(true);
@@ -70,8 +78,8 @@ export default function UhradyPage() {
     </form>}
 
     <section className="panel"><div className="panel-header"><div><h2>Historie úhrad</h2><span>{payments.length} plateb</span></div></div>
-      <div className="table-wrap"><table className="data-table"><thead><tr><th>Datum</th><th>Faktura</th><th>Zákazník</th><th>Způsob</th><th>Pokladní doklad</th><th className="amount">Částka</th></tr></thead>
-      <tbody>{payments.length ? payments.map(p => <tr key={p.id}><td>{new Date(p.paidAt).toLocaleDateString("cs-CZ")}</td><td><strong>{p.invoice.number ?? "-"}</strong></td><td>{p.invoice.customer?.name ?? "-"}</td><td>{methods[p.method] ?? p.method}</td><td>{p.cashDocument?.number ?? "-"}</td><td className="amount">{Number(p.amount).toLocaleString("cs-CZ", { minimumFractionDigits: 2 })} Kč</td></tr>) : <tr><td colSpan={6} className="table-muted">Zatím nejsou evidované žádné úhrady.</td></tr>}</tbody></table></div>
+      <div className="table-wrap"><table className="data-table"><thead><tr><th>Datum</th><th>Faktura</th><th>Zákazník</th><th>Způsob</th><th>Pokladní doklad</th><th className="amount">Částka</th><th></th></tr></thead>
+      <tbody>{payments.length ? payments.map(p => <tr key={p.id}><td>{new Date(p.paidAt).toLocaleDateString("cs-CZ")}</td><td><strong>{p.invoice.number ?? "-"}</strong></td><td>{p.invoice.customer?.name ?? "-"}</td><td>{methods[p.method] ?? p.method}</td><td>{p.cashDocument?.number ?? "-"}</td><td className="amount">{Number(p.amount).toLocaleString("cs-CZ", { minimumFractionDigits: 2 })} Kč</td><td><button className="button button-danger button-small" onClick={() => deletePayment(p.id, p.amount)}>Smazat</button></td></tr>) : <tr><td colSpan={7} className="table-muted">Zatím nejsou evidované žádné úhrady.</td></tr>}</tbody></table></div>
     </section>
   </div></AppShell>;
 }
