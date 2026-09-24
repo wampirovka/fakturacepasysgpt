@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { reserveNumber } from "@/lib/numbering";
 import { calculateInvoiceItems, parseInvoiceItems } from "@/lib/invoice-calculation";
 
@@ -107,6 +108,8 @@ export async function POST(request: Request) {
           },
         },
       });
+      await writeAudit(tx, { companyId: company.id, userId: membership.userId, action: "CREATE", entity: "INVOICE", entityId: invoice.id, details: invoice.number });
+      return invoice;
     });
     return NextResponse.json({ invoice }, { status: 201 });
   } catch (error) {
