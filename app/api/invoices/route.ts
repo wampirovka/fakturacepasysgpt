@@ -62,7 +62,7 @@ export async function POST(request: Request) {
       dueDate.setDate(dueDate.getDate() + dueDays);
       const number = await reserveNumber(tx, company.id, "INVOICE", issueDate.getFullYear());
 
-      return tx.invoice.create({
+      const created = await tx.invoice.create({
         data: {
           companyId: company.id,
           customerId: customer?.id ?? null,
@@ -108,8 +108,8 @@ export async function POST(request: Request) {
           },
         },
       });
-      await writeAudit(tx, { companyId: company.id, userId: membership.userId, action: "CREATE", entity: "INVOICE", entityId: invoice.id, details: invoice.number });
-      return invoice;
+      await writeAudit(tx, { companyId: company.id, userId: membership.userId, action: "CREATE", entity: "INVOICE", entityId: created.id, details: created.number });
+      return created;
     });
     return NextResponse.json({ invoice }, { status: 201 });
   } catch (error) {
