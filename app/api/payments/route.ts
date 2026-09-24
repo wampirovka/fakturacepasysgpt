@@ -47,10 +47,16 @@ export async function POST(request: Request) {
       if (!invoice) throw new Error("Faktura nebyla nalezena.");
       if (["CANCELLED", "DRAFT"].includes(invoice.status)) throw new Error("Na tento doklad nelze zadat úhradu.");
 
-      const remaining = Number(invoice.total) - Number(invoice.paidAmount);
+      const [paymentAggregate, advanceAggregate] = await Promise.all([
+        tx.payment.aggregate({ where: { invoiceId: invoice.id }, _sum: { amount: true } }),
+        tx.invoiceAdvanceApplication.aggregate({ where: { finalInvoiceId: invoice.id }, _sum: { amount: true } }),
+      ]);
+      const paidByPayments = Number(paymentAggregate._sum.amount ?? 0);
+      const coveredByAdvances = Number(advanceAggregate._sum.amount ?? 0);
+      const remaining = Number(invoice.total) - paidByPayments - coveredByAdvances;
       if (amount > Math.round((remaining + 0.000001) * 100) / 100) throw new Error(`Úhrada je vyšší než zbývající částka ${remaining.toFixed(2)} Kč.`);
 
-      const newPaid = Math.round((Number(invoice.paidAmount) + amount) * 100) / 100;
+      const newPaid = Math.round((paidByPayments + amount) * 100) / 100 + coveredByAdvances;
       const status = newPaid >= Number(invoice.total) ? "PAID" : "PARTIALLY_PAID";
 
       const created = await tx.payment.create({
