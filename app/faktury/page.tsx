@@ -37,6 +37,9 @@ export default function FakturyPage() {
   const [message, setMessage] = useState("");
   const [form, setForm] = useState(emptyForm());
   const [advanceAmounts, setAdvanceAmounts] = useState<Record<string, string>>({});
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [typeFilter, setTypeFilter] = useState("ALL");
 
   async function load() {
     const [ir, cr, ar, companyResponse] = await Promise.all([
@@ -60,6 +63,14 @@ export default function FakturyPage() {
       acc.net += net; acc.vat += vat; acc.total += net + vat; return acc;
     }, { net: 0, vat: 0, total: 0 });
   }, [form.items, vatPayer]);
+
+  const filteredInvoices = invoices.filter((i) => {
+    const q = search.trim().toLowerCase();
+    const matchesSearch = !q || [i.number ?? "", i.customer?.name ?? ""].some((v) => v.toLowerCase().includes(q));
+    const matchesStatus = statusFilter === "ALL" || i.status === statusFilter;
+    const matchesType = typeFilter === "ALL" || i.type === typeFilter;
+    return matchesSearch && matchesStatus && matchesType;
+  });
 
   const customerAdvances = advances
     .filter((a) => a.customer?.id === form.customerId)
@@ -190,11 +201,20 @@ export default function FakturyPage() {
         <div className="invoice-form-actions"><button className="button button-secondary" type="button" onClick={() => setOpen(false)}>Zrušit</button><button className="button button-primary" disabled={saving}>{saving ? "Vytvářím…" : mode === "final" ? "Vytvořit koncovou fakturu" : "Vytvořit fakturu"}</button></div>
       </form>}
 
-      <section className="panel"><div className="panel-header"><div><h2>Seznam faktur</h2><span>{invoices.length} dokladů</span></div></div>
+      <section className="panel"><div className="panel-header"><div><h2>Seznam faktur</h2><span>{filteredInvoices.length} z {invoices.length} dokladů</span></div></div>
+        <div className="document-filters">
+          <input className="customer-search" placeholder="Hledat číslo nebo zákazníka…" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="ALL">Všechny stavy</option><option value="ISSUED">Vystavené</option><option value="PARTIALLY_PAID">Částečně uhrazené</option><option value="PAID">Uhrazené</option><option value="OVERDUE">Po splatnosti</option><option value="DRAFT">Rozpracované</option><option value="CANCELLED">Stornované</option>
+          </select>
+          <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+            <option value="ALL">Všechny typy</option><option value="INVOICE">Faktury</option><option value="ADVANCE">Zálohové</option><option value="CORRECTIVE">Opravné</option>
+          </select>
+        </div>
         <div className="table-wrap"><table className="data-table"><thead><tr><th>Číslo</th><th>Typ</th><th>Zákazník</th><th>Vystavení</th><th>Splatnost</th><th>Stav</th><th></th><th className="amount">Částka</th></tr></thead>
-        <tbody>{invoices.length ? invoices.map(i => <tr key={i.id}>
+        <tbody>{filteredInvoices.length ? filteredInvoices.map(i => <tr key={i.id}>
           <td><strong>{i.number ?? "Rozpracovaná"}</strong></td><td>{i.type === "ADVANCE" ? "Zálohová" : i.type === "CORRECTIVE" ? "Opravná" : "Faktura"}</td><td>{i.customer?.name ?? "Neuvedený zákazník"}</td>
-          <td>{new Date(i.issueDate).toLocaleDateString("cs-CZ")}</td><td>{i.dueDate ? new Date(i.dueDate).toLocaleDateString("cs-CZ") : "-"}</td><td><span className="status status-due">{statusText[i.status] ?? i.status}</span></td>
+          <td>{new Date(i.issueDate).toLocaleDateString("cs-CZ")}</td><td>{i.dueDate ? new Date(i.dueDate).toLocaleDateString("cs-CZ") : "-"}</td><td><span className={`status ${i.status === "PAID" ? "status-paid" : i.status === "OVERDUE" ? "status-overdue" : i.status === "DRAFT" || i.status === "CANCELLED" ? "status-muted" : "status-due"}`}>{statusText[i.status] ?? i.status}</span></td>
           <td><div className="row-actions"><Link className="button button-secondary button-small" href={`/doklad/${i.id}`}>Detail</Link>{i.type !== "CORRECTIVE" && i.status !== "CANCELLED" && <button className="button button-secondary button-small" onClick={() => createCorrective(i.id, i.number)}>Opravný doklad</button>}<Link className="button button-secondary button-small" href={`/doklad/${i.id}?edit=1`}>Upravit</Link><button className="button button-danger button-small" onClick={() => deleteInvoice(i.id, i.number)}>Smazat</button></div></td>
           <td className="amount">{Number(i.total).toLocaleString("cs-CZ",{minimumFractionDigits:2})} Kč</td>
         </tr>) : <tr><td colSpan={8} className="table-muted">Zatím tu nejsou žádné faktury.</td></tr>}</tbody></table></div>
