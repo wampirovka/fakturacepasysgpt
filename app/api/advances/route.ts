@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { reserveNumber } from "@/lib/numbering";
 import { calculateInvoiceItems, parseInvoiceItems } from "@/lib/invoice-calculation";
 
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
       dueDate.setDate(dueDate.getDate() + dueDays);
       const number = await reserveNumber(tx, company.id, "ADVANCE", issueDate.getFullYear());
 
-      return tx.invoice.create({
+      const created = await tx.invoice.create({
         data: {
           companyId: company.id,
           customerId: customer.id,
@@ -109,6 +110,8 @@ export async function POST(request: Request) {
           },
         },
       });
+      await writeAudit(tx, { companyId: company.id, userId: membership.userId, action: "CREATE", entity: "ADVANCE", entityId: created.id, details: created.number });
+      return created;
     });
 
     return NextResponse.json({ advance }, { status: 201 });
