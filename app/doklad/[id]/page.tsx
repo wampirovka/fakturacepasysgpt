@@ -222,7 +222,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
 
     <section className={`print-invoice print-style-${(company.exportStyle ?? "CLASSIC").toLowerCase()}`}>
       <div className="print-topline">
-        <div className="print-brand">{company.logoUrl && <img className="print-logo" src={company.logoUrl} alt="" />}<div><strong>{invoice.sellerName ?? "Fakturace"}</strong><span>{invoice.sellerStreet ?? ""}{invoice.sellerCity ? (invoice.sellerStreet ? ", " : "") + invoice.sellerCity : ""}</span></div></div>
+        <div className="print-brand">{company.logoUrl && <img className="print-logo" src={company.logoUrl} alt="" />}<div><strong>{company.name ?? invoice.sellerName ?? "Fakturace"}</strong><span>{[company.street, company.zip, company.city].filter(Boolean).join(", ")}</span></div></div>
         <div className="print-type"><span>{vatPayer ? "DAŇOVÝ DOKLAD" : "FAKTURA"}</span><strong>{isCorrective ? "OPRAVNÝ DOKLAD" : isAdvance ? "ZÁLOHOVÁ FAKTURA" : "FAKTURA"}</strong></div>
       </div>
 
@@ -266,7 +266,7 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
       </div>
 
       {invoice.note && <div className="print-note-block"><span className="print-label">POZNÁMKA</span><div>{invoice.note}</div></div>}
-      <div className="print-footer"><span>{invoice.sellerName ?? "Fakturace"}{invoice.sellerIco ? " · IČO " + invoice.sellerIco : ""}{invoice.sellerDic ? " · DIČ " + invoice.sellerDic : ""}</span><div className="print-qr-wrap">{qrCode ? <><img className="print-qr" src={qrCode} alt="QR platba" /><span>QR PLATBA</span></> : <span>Bankovní údaje nejsou nastavené</span>} </div><span>{statusText[invoice.status] ?? invoice.status}</span></div>
+      <div className="print-footer"><span>{company.name ?? invoice.sellerName ?? "Fakturace"}{company.ico ? " · IČO " + company.ico : invoice.sellerIco ? " · IČO " + invoice.sellerIco : ""}{company.dic ? " · DIČ " + company.dic : invoice.sellerDic ? " · DIČ " + invoice.sellerDic : ""}</span><div className="print-qr-wrap">{qrCode ? <><img className="print-qr" src={qrCode} alt="QR platba" /><span>QR PLATBA</span></> : <span>Bankovní údaje nejsou nastavené</span>} </div><span>{statusText[invoice.status] ?? invoice.status}</span></div>
     </section>
     {!isAdvance && !isCorrective && invoice.status !== "PAID" && availableAdvances.length>0 && <section className="panel detail-card print-hide">
       <div className="panel-header"><div><h2>Uplatnit zálohu</h2><span>Uplatnit již uhrazenou zálohu na tuto existující fakturu.</span></div></div>
