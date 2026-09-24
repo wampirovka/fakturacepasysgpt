@@ -18,6 +18,7 @@ type Company = {
   bankAccount: string | null;
   bankCode: string | null;
   iban: string | null;
+  exportStyle: string;
   vatStatus: string;
   defaultDueDays: number;
 };
@@ -37,6 +38,7 @@ const emptyCompany: Company = {
   bankAccount: null,
   bankCode: null,
   iban: null,
+  exportStyle: "CLASSIC",
   vatStatus: "NON_VAT_PAYER",
   defaultDueDays: 14,
 };
@@ -198,6 +200,15 @@ export default function NastaveniPage() {
                 >
                   Vygenerovat IBAN z účtu
                 </button>
+              </div>
+              <div className="auth-field settings-wide">
+                <label htmlFor="exportStyle">Vzhled exportovaných dokladů</label>
+                <select id="exportStyle" value={company.exportStyle} onChange={(event) => update("exportStyle", event.target.value)}>
+                  <option value="CLASSIC">Klasický · aktuální vzhled</option>
+                  <option value="POHODA">Tradiční · účetní styl</option>
+                  <option value="IDOKLAD">Moderní · barevný styl</option>
+                </select>
+                <span className="field-help">Vzhled se použije při tisku a uložení faktury do PDF. Nejde o kopii žádného konkrétního programu.</span>
               </div>
               <div className="auth-field">
                 <label htmlFor="vatStatus">Režim DPH</label>
