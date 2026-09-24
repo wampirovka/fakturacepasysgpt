@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 
 type Customer={id:string;type:"BUSINESS"|"PERSON";name:string;ico:string|null;dic:string|null;street:string|null;city:string|null;zip:string|null;country:string;email:string|null;phone:string|null;note:string|null};
@@ -49,7 +50,7 @@ export default function ZakazniciPage(){
   </section>
   <section className="panel"><div className="panel-header"><div><h2>Seznam zákazníků</h2><span>{items.length} aktivních</span></div><input className="customer-search" placeholder="Hledat název, IČO, město…" value={q} onChange={e=>setQ(e.target.value)}/></div>
    <div className="table-wrap"><table className="data-table"><thead><tr><th>Zákazník</th><th>IČO</th><th>Kontakt</th><th>Adresa</th><th></th></tr></thead><tbody>
-   {loading?<tr><td colSpan={5}>Načítám…</td></tr>:items.length===0?<tr><td colSpan={5}>Zatím žádní zákazníci.</td></tr>:items.map(c=><tr key={c.id}><td><strong>{c.name}</strong><br/><span className="table-muted">{c.type==="PERSON"?"Fyzická osoba":"Firma"}</span></td><td>{c.ico??"—"}</td><td>{c.email??c.phone??"—"}</td><td>{[c.street,c.city,c.zip].filter(Boolean).join(", ")||"—"}</td><td className="customer-actions"><button className="button button-secondary button-small" onClick={()=>start(c)}>Upravit</button><button className="button button-danger button-small" onClick={()=>hide(c.id)}>Skrýt</button></td></tr>)}
+   {loading?<tr><td colSpan={5}>Načítám…</td></tr>:items.length===0?<tr><td colSpan={5}>Zatím žádní zákazníci.</td></tr>:items.map(c=><tr key={c.id}><td><strong>{c.name}</strong><br/><span className="table-muted">{c.type==="PERSON"?"Fyzická osoba":"Firma"}</span></td><td>{c.ico??"—"}</td><td>{c.email??c.phone??"—"}</td><td>{[c.street,c.city,c.zip].filter(Boolean).join(", ")||"—"}</td><td className="customer-actions"><Link className="button button-secondary button-small" href={"/zakaznici/"+c.id}>Detail</Link><button className="button button-secondary button-small" onClick={()=>start(c)}>Upravit</button><button className="button button-danger button-small" onClick={()=>hide(c.id)}>Skrýt</button></td></tr>)}
    </tbody></table></div>
   </section>
  </div></AppShell>
