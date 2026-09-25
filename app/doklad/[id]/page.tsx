@@ -145,15 +145,49 @@ export default function DokladDetailPage({ params }: { params: Promise<{ id: str
 
   async function save() {
     if (!invoice) return;
-    setSaving(true); setMessage("");
-    const r = await fetch("/api/invoices/" + invoice.id, {
-      method:"PATCH", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({...form, forceEdit: repairMode, items:form.items.map(item=>({...item,quantity:Number(item.quantity),unitPrice:Number(item.unitPrice),discount:Number(item.discount),vatRate:vatPayer?Number(item.vatRate):null}))}),
-    });
-    const data=await r.json().catch(()=>({}));
-    if(!r.ok) setMessage(data.error??"Doklad se nepodařilo upravit.");
-    else { setInvoice({...invoice,...data.invoice}); setEditing(false); setRepairMode(false); setMessage(repairMode ? "Uzamčený doklad byl opraven." : "Doklad byl upraven."); }
-    setSaving(false);
+    setSaving(true);
+    setMessage("");
+
+    try {
+      const r = await fetch("/api/invoices/" + invoice.id, {
+        method:"PATCH",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          ...form,
+          forceEdit: repairMode,
+          items:form.items.map(item=>({
+            ...item,
+            quantity:Number(item.quantity),
+            unitPrice:Number(item.unitPrice),
+            discount:Number(item.discount),
+            vatRate:vatPayer?Number(item.vatRate):null
+          }))
+        }),
+      });
+
+      const data=await r.json().catch(()=>({}));
+      if(!r.ok) {
+        setMessage(data.error??"Doklad se nepodařilo upravit.");
+        return;
+      }
+
+      const refreshed = await fetch("/api/invoices/" + invoice.id);
+      const refreshedData = await refreshed.json().catch(() => ({}));
+
+      if (!refreshed.ok || !refreshedData.invoice) {
+        setMessage("Doklad byl uložen, ale nepodařilo se znovu načíst jeho aktuální stav.");
+        return;
+      }
+
+      setInvoice(refreshedData.invoice);
+      setEditing(false);
+      setRepairMode(false);
+      setMessage(repairMode ? "Uzamčený doklad byl opraven." : "Doklad byl upraven.");
+    } catch {
+      setMessage("Doklad se nepodařilo uložit. Zkontrolujte připojení k serveru.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function remove() {
