@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 
 type Invoice = { id: string; number: string | null; total: string | number; paidAmount: string | number; customer: { name: string } | null };
+type Account = { id: string; name: string };
 type Payment = { id: string; amount: string | number; paidAt: string; method: string; invoice: { id: string; number: string | null; customer: { name: string } | null }; cashDocument: { number: string | null } | null };
 
 const methods: Record<string, string> = { BANK_TRANSFER: "Bankovní převod", CASH: "Hotově", CARD: "Kartou", OTHER: "Jiné" };
@@ -12,20 +13,24 @@ const methods: Record<string, string> = { BANK_TRANSFER: "Bankovní převod", CA
 export default function UhradyPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<Account[]>([]);
+  const [cashRegisters, setCashRegisters] = useState<Account[]>([]);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [search, setSearch] = useState("");
   const [methodFilter, setMethodFilter] = useState("ALL");
-  const [form, setForm] = useState({ invoiceId: "", amount: "", paidAt: new Date().toISOString().slice(0, 10), method: "BANK_TRANSFER", note: "" });
+  const [form, setForm] = useState({ invoiceId: "", amount: "", paidAt: new Date().toISOString().slice(0, 10), method: "BANK_TRANSFER", bankAccountId: "", cashRegisterId: "", note: "" });
 
   async function load() {
-    const [ir, pr] = await Promise.all([fetch("/api/invoices"), fetch("/api/payments")]);
+    const [ir, pr, ar] = await Promise.all([fetch("/api/invoices"), fetch("/api/payments"), fetch("/api/finance/accounts")]);
     const i = await ir.json().catch(() => ({}));
     const p = await pr.json().catch(() => ({}));
+    const a = await ar.json().catch(() => ({}));
     if (ir.ok) setInvoices((i.invoices ?? []).filter((x: Invoice) => Number(x.total) > Number(x.paidAmount)));
     else setMessage(i.error ?? "Nepodařilo se načíst faktury.");
     if (pr.ok) setPayments(p.payments ?? []);
+    if (ar.ok) { setBankAccounts(a.bankAccounts ?? []); setCashRegisters(a.cashRegisters ?? []); }
   }
 
   useEffect(() => { load().catch(() => setMessage("Nepodařilo se načíst data.")); }, []);
@@ -81,7 +86,7 @@ export default function UhradyPage() {
         }} required><option value="">Vyberte fakturu</option>{invoices.map(i => <option key={i.id} value={i.id}>{i.number ?? "Bez čísla"} · {i.customer?.name ?? "Bez zákazníka"} · zbývá {(Number(i.total)-Number(i.paidAmount)).toLocaleString("cs-CZ", { minimumFractionDigits: 2 })} Kč</option>)}</select></div>
         <Field label="Částka" type="number" value={form.amount} onChange={v => setForm({ ...form, amount: v })} required />
         <Field label="Datum úhrady" type="date" value={form.paidAt} onChange={v => setForm({ ...form, paidAt: v })} />
-        <div className="auth-field"><label>Způsob úhrady</label><select value={form.method} onChange={e => setForm({ ...form, method: e.target.value })}><option value="BANK_TRANSFER">Bankovní převod</option><option value="CASH">Hotově</option><option value="CARD">Kartou</option><option value="OTHER">Jiné</option></select></div>
+        <div className="auth-field"><label>Způsob úhrady</label><select value={form.method} onChange={e => setForm({ ...form, method: e.target.value })}><option value="BANK_TRANSFER">Bankovní převod</option><option value="CASH">Hotově</option><option value="CARD">Kartou</option><option value="OTHER">Jiné</option></select></div>{form.method === "BANK_TRANSFER" && <div className="auth-field"><label>Bankovní účet</label><select value={form.bankAccountId} onChange={e => setForm({ ...form, bankAccountId: e.target.value })} required><option value="">Vyberte účet</option>{bankAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></div>}{form.method === "CASH" && <div className="auth-field"><label>Pokladna</label><select value={form.cashRegisterId} onChange={e => setForm({ ...form, cashRegisterId: e.target.value })} required><option value="">Vyberte pokladnu</option>{cashRegisters.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></div>}
         <Field label="Poznámka" value={form.note} onChange={v => setForm({ ...form, note: v })} />
       </div>
       <div className="invoice-form-actions"><button className="button button-secondary" type="button" onClick={() => setOpen(false)}>Zrušit</button><button className="button button-primary" disabled={saving}>{saving ? "Ukládám…" : "Zadat úhradu"}</button></div>

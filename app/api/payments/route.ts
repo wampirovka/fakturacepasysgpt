@@ -36,6 +36,10 @@ export async function POST(request: Request) {
   const method = ["BANK_TRANSFER", "CASH", "CARD", "OTHER"].includes(String(body.method)) ? String(body.method) : "BANK_TRANSFER";
   const paidAt = body.paidAt ? new Date(String(body.paidAt)) : new Date();
   const note = typeof body.note === "string" ? body.note.trim() || null : null;
+  const bankAccountId = typeof body.bankAccountId === "string" ? body.bankAccountId : null;
+  const cashRegisterId = typeof body.cashRegisterId === "string" ? body.cashRegisterId : null;
+  if (method === "BANK_TRANSFER" && !bankAccountId) return NextResponse.json({ error: "Pro bankovní úhradu vyberte bankovní účet." }, { status: 400 });
+  if (method === "CASH" && !cashRegisterId) return NextResponse.json({ error: "Pro hotovostní úhradu vyberte pokladnu." }, { status: 400 });
 
   if (!invoiceId) return NextResponse.json({ error: "Faktura je povinná." }, { status: 400 });
   if (!Number.isFinite(amount) || amount <= 0) return NextResponse.json({ error: "Částka úhrady musí být větší než 0." }, { status: 400 });
@@ -59,11 +63,36 @@ export async function POST(request: Request) {
       const newPaid = Math.round((paidByPayments + amount) * 100) / 100 + coveredByAdvances;
       const status = newPaid >= Number(invoice.total) ? "PAID" : "PARTIALLY_PAID";
 
+      if (bankAccountId) {
+        const account = await tx.bankAccount.findFirst({ where: { id: bankAccountId, companyId: membership.companyId, isActive: true } });
+        if (!account) throw new Error("Bankovní účet nebyl nalezen.");
+      }
+      if (cashRegisterId) {
+        const register = await tx.cashRegister.findFirst({ where: { id: cashRegisterId, companyId: membership.companyId, isActive: true } });
+        if (!register) throw new Error("Pokladna nebyla nalezena.");
+      }
+
       const created = await tx.payment.create({
-        data: { companyId: membership.companyId, invoiceId, amount, paidAt, method: method as any, note },
+        data: { companyId: membership.companyId, invoiceId, amount, paidAt, method: method as any, note, bankAccountId, cashRegisterId },
       });
 
       await tx.invoice.update({ where: { id: invoice.id }, data: { paidAmount: newPaid, status } });
+
+      await tx.financialMovement.create({
+        data: {
+          companyId: membership.companyId,
+          type: "INCOME",
+          amount,
+          date: paidAt,
+          method: method as any,
+          description: `Úhrada faktury ${invoice.number ?? invoice.id}`,
+          bankAccountId,
+          cashRegisterId,
+          invoiceId: invoice.id,
+          paymentId: created.id,
+          note,
+        },
+      });
 
       if (method === "CASH") {
         const number = await reserveNumber(tx, membership.companyId, "CASH_DOCUMENT", paidAt.getFullYear());
