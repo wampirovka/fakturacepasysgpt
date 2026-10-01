@@ -4,219 +4,60 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AppShell } from "@/components/app-shell";
-import { effectiveInvoiceStatus } from "@/lib/invoice-status";
 
-function money(value: number) {
-  return value.toLocaleString("cs-CZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " Kč";
-}
+const money=(v:number)=>v.toLocaleString("cs-CZ",{minimumFractionDigits:2,maximumFractionDigits:2})+" Kč";
+const date=(v:Date)=>new Intl.DateTimeFormat("cs-CZ",{day:"2-digit",month:"2-digit",year:"numeric"}).format(v);
 
-function date(value: Date) {
-  return new Intl.DateTimeFormat("cs-CZ", { day: "2-digit", month: "2-digit", year: "numeric" }).format(value);
-}
+export default async function DashboardPage(){
+ const session=await auth.api.getSession({headers:await headers()});
+ if(!session) redirect("/prihlaseni");
+ const membership=await prisma.companyMember.findFirst({where:{userId:session.user.id},include:{company:true}});
+ if(!membership) redirect("/firma");
+ const companyId=membership.companyId, now=new Date(), year=now.getFullYear();
+ const yearStart=new Date(year,0,1), yearEnd=new Date(year+1,0,1), monthStart=new Date(year,now.getMonth(),1), monthEnd=new Date(year,now.getMonth()+1,1);
 
-const statusText: Record<string, string> = {
-  ISSUED: "Vystavená",
-  PAID: "Uhrazená",
-  PARTIALLY_PAID: "Částečně uhrazená",
-  OVERDUE: "Po splatnosti",
-  DRAFT: "Rozpracovaná",
-  CANCELLED: "Stornovaná",
-};
+ const [movements,invoices,receivedDocs,banks,cashes]=await Promise.all([
+  prisma.financialMovement.findMany({where:{companyId,date:{gte:yearStart,lt:yearEnd}},include:{category:true,bankAccount:true,cashRegister:true,invoice:{select:{number:true}},receivedDocument:{select:{documentNumber:true}}},orderBy:{date:"desc"},take:1000}),
+  prisma.invoice.findMany({where:{companyId,status:{notIn:["DRAFT","CANCELLED"]}},select:{total:true,paidAmount:true,dueDate:true}}),
+  prisma.receivedDocument.findMany({where:{companyId},select:{amount:true,paidAmount:true,dueDate:true}}),
+  prisma.bankAccount.findMany({where:{companyId,isActive:true},select:{id:true,name:true,openingBalance:true}}),
+  prisma.cashRegister.findMany({where:{companyId,isActive:true},select:{id:true,name:true,openingBalance:true}})
+ ]);
 
-const statusClass: Record<string, string> = {
-  PAID: "status-paid",
-  OVERDUE: "status-overdue",
-  PARTIALLY_PAID: "status-due",
-  ISSUED: "status-due",
-  DRAFT: "status-muted",
-  CANCELLED: "status-muted",
-};
+ const income=movements.filter(m=>m.type==="INCOME").reduce((s,m)=>s+Number(m.amount),0);
+ const expense=movements.filter(m=>m.type==="EXPENSE").reduce((s,m)=>s+Number(m.amount),0);
+ const result=income-expense;
+ const monthIncome=movements.filter(m=>m.type==="INCOME"&&m.date>=monthStart&&m.date<monthEnd).reduce((s,m)=>s+Number(m.amount),0);
+ const monthExpense=movements.filter(m=>m.type==="EXPENSE"&&m.date>=monthStart&&m.date<monthEnd).reduce((s,m)=>s+Number(m.amount),0);
+ const receivable=invoices.reduce((s,i)=>s+Math.max(0,Number(i.total)-Number(i.paidAmount)),0);
+ const payable=receivedDocs.reduce((s,d)=>s+Math.max(0,Number(d.amount)-Number(d.paidAmount)),0);
+ const overdueReceivable=invoices.reduce((s,i)=>s+(Number(i.total)>Number(i.paidAmount)&&i.dueDate&&i.dueDate<now?Math.max(0,Number(i.total)-Number(i.paidAmount)):0),0);
+ const overduePayable=receivedDocs.reduce((s,d)=>s+(Number(d.amount)>Number(d.paidAmount)&&d.dueDate&&d.dueDate<now?Math.max(0,Number(d.amount)-Number(d.paidAmount)):0),0);
 
-export default async function DashboardPage() {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) redirect("/prihlaseni");
+ const bank=banks.map(a=>({name:a.name,balance:Number(a.openingBalance)+movements.filter(m=>m.bankAccount?.id===a.id).reduce((s,m)=>s+(m.type==="INCOME"?Number(m.amount):-Number(m.amount)),0)}));
+ const cash=cashes.map(a=>({name:a.name,balance:Number(a.openingBalance)+movements.filter(m=>m.cashRegister?.id===a.id).reduce((s,m)=>s+(m.type==="INCOME"?Number(m.amount):-Number(m.amount)),0)}));
+ const totalBank=bank.reduce((s,a)=>s+a.balance,0), totalCash=cash.reduce((s,a)=>s+a.balance,0);
 
-  const membership = await prisma.companyMember.findFirst({
-    where: { userId: session.user.id },
-    include: { company: true },
-  });
-  if (!membership) redirect("/firma");
+ return <AppShell><div className="content">
+  <header className="page-header dashboard-hero"><div><p className="eyebrow">Přehled firmy</p><h1 className="page-title">Dobrý den, {session.user.name}</h1><p className="page-subtitle">{membership.company.name} · skutečný stav peněz, ne jen vystavené faktury.</p></div><div className="dashboard-actions"><Link className="button button-secondary" href="/uhrady">+ Zadat úhradu</Link><Link className="button button-primary" href="/faktury">+ Nová faktura</Link></div></header>
 
-  const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  <section className="dashboard-grid">
+   <article className="stat-card dashboard-stat"><div className="stat-label">Skutečné příjmy</div><div className="stat-value">{money(income)}</div><div className="stat-note">rok {year}</div></article>
+   <article className="stat-card dashboard-stat"><div className="stat-label">Skutečné výdaje</div><div className="stat-value">{money(expense)}</div><div className="stat-note">rok {year}</div></article>
+   <article className="stat-card dashboard-stat dashboard-stat-success"><div className="stat-label">Aktuální výsledek</div><div className="stat-value">{money(result)}</div><div className="stat-note">příjmy − výdaje</div></article>
+   <article className="stat-card dashboard-stat"><div className="stat-label">Pohledávky</div><div className="stat-value">{money(receivable)}</div><div className="stat-note">{money(overdueReceivable)} po splatnosti</div></article>
+  </section>
 
-  const [invoices, payments, recentInvoices, recentPayments] = await Promise.all([
-    prisma.invoice.findMany({
-      where: { companyId: membership.companyId, type: { not: "ADVANCE" } },
-      select: { total: true, paidAmount: true, status: true, dueDate: true, issueDate: true },
-    }),
-    prisma.payment.findMany({
-      where: { companyId: membership.companyId },
-      select: { amount: true, paidAt: true },
-    }),
-    prisma.invoice.findMany({
-      where: { companyId: membership.companyId },
-      include: { customer: { select: { id: true, name: true } } },
-      orderBy: [{ issueDate: "desc" }, { createdAt: "desc" }],
-      take: 8,
-    }),
-    prisma.payment.findMany({
-      where: { companyId: membership.companyId },
-      include: { invoice: { select: { id: true, number: true, customer: { select: { name: true } } } } },
-      orderBy: { paidAt: "desc" },
-      take: 5,
-    }),
-  ]);
+  <section className="dashboard-columns">
+   <div className="panel"><div className="panel-header"><div><h2>Finance tento měsíc</h2><span>{now.toLocaleDateString("cs-CZ",{month:"long",year:"numeric"})}</span></div></div><div className="dashboard-finance"><div><span>Příjmy</span><strong>{money(monthIncome)}</strong></div><div><span>Výdaje</span><strong>{money(monthExpense)}</strong></div><div><span>Rozdíl</span><strong>{money(monthIncome-monthExpense)}</strong></div></div></div>
+   <div className="panel"><div className="panel-header"><div><h2>Závazky</h2><span>Co ještě čeká na zaplacení</span></div><Link className="text-link" href="/zavazky">Detail →</Link></div><div className="dashboard-finance"><div><span>K úhradě</span><strong>{money(payable)}</strong></div><div><span>Po splatnosti</span><strong>{money(overduePayable)}</strong></div></div></div>
+  </section>
 
-  const outstanding = invoices.reduce((sum, invoice) =>
-    sum + Math.max(0, Number(invoice.total) - Number(invoice.paidAmount)), 0);
+  <section className="dashboard-columns">
+   <div className="panel"><div className="panel-header"><div><h2>Bankovní účty</h2><span>Aktuální zůstatky</span></div></div>{bank.length?<div className="quick-actions">{bank.map(a=><div className="quick-action" key={a.name}><strong>{a.name}</strong><span>zůstatek</span><b>{money(a.balance)}</b></div>)}</div>:<div className="empty-cell">Zatím nejsou nastavené bankovní účty.</div>}<div className="panel-header"><strong>Celkem {money(totalBank)}</strong></div></div>
+   <div className="panel"><div className="panel-header"><div><h2>Pokladna</h2><span>Aktuální hotovost</span></div></div>{cash.length?<div className="quick-actions">{cash.map(a=><div className="quick-action" key={a.name}><strong>{a.name}</strong><span>zůstatek</span><b>{money(a.balance)}</b></div>)}</div>:<div className="empty-cell">Zatím nejsou nastavené pokladny.</div>}<div className="panel-header"><strong>Celkem {money(totalCash)}</strong></div></div>
+  </section>
 
-  const overdue = invoices.reduce((sum, invoice) =>
-    effectiveInvoiceStatus(invoice) === "OVERDUE"
-      ? sum + Math.max(0, Number(invoice.total) - Number(invoice.paidAmount))
-      : sum, 0);
-
-  const monthInvoices = invoices.filter(i => i.issueDate >= monthStart && i.issueDate < monthEnd);
-  const monthPayments = payments.filter(p => p.paidAt >= monthStart && p.paidAt < monthEnd);
-  const monthInvoiced = monthInvoices.reduce((sum, i) => sum + Number(i.total), 0);
-  const monthPaid = monthPayments.reduce((sum, p) => sum + Number(p.amount), 0);
-  const unpaidCount = invoices.filter(i => Number(i.paidAmount) < Number(i.total) - 0.005 && Number(i.total) > 0).length;
-  const overdueCount = invoices.filter(i => effectiveInvoiceStatus(i) === "OVERDUE").length;
-
-  const monthLabels = ["Led", "Úno", "Bře", "Dub", "Kvě", "Čvn", "Čvc", "Srp", "Zář", "Říj", "Lis", "Pro"];
-  const monthly = monthLabels.map((label, index) => ({
-    label,
-    invoiced: invoices.filter(i => i.issueDate.getMonth() === index && i.issueDate.getFullYear() === now.getFullYear()).reduce((s, i) => s + Number(i.total), 0),
-    paid: payments.filter(p => p.paidAt.getMonth() === index && p.paidAt.getFullYear() === now.getFullYear()).reduce((s, p) => s + Number(p.amount), 0),
-  }));
-  const maxMonth = Math.max(1, ...monthly.flatMap(m => [m.invoiced, m.paid]));
-
-  return (
-    <AppShell>
-      <div className="content">
-        <header className="page-header dashboard-hero">
-          <div>
-            <p className="eyebrow">Přehled firmy</p>
-            <h1 className="page-title">Dobrý den, {session.user.name}</h1>
-            <p className="page-subtitle">{membership.company.name} · rychlý přehled toho, co se ve firmě děje.</p>
-          </div>
-          <div className="dashboard-actions">
-            <Link className="button button-secondary" href="/uhrady">+ Zadat úhradu</Link>
-            <Link className="button button-primary" href="/faktury">+ Nová faktura</Link>
-          </div>
-        </header>
-
-        <section className="dashboard-grid" aria-label="Souhrnné údaje">
-          <article className="stat-card dashboard-stat">
-            <div className="stat-label">K pohledávce</div>
-            <div className="stat-value">{money(outstanding)}</div>
-            <div className="stat-note">{unpaidCount} neuhrazených dokladů</div>
-          </article>
-          <article className="stat-card dashboard-stat dashboard-stat-danger">
-            <div className="stat-label">Po splatnosti</div>
-            <div className="stat-value">{money(overdue)}</div>
-            <div className="stat-note">{overdueCount} doklady po termínu</div>
-          </article>
-          <article className="stat-card dashboard-stat">
-            <div className="stat-label">Vystaveno tento měsíc</div>
-            <div className="stat-value">{money(monthInvoiced)}</div>
-            <div className="stat-note">{monthInvoices.length} dokladů</div>
-          </article>
-          <article className="stat-card dashboard-stat dashboard-stat-success">
-            <div className="stat-label">Přijato tento měsíc</div>
-            <div className="stat-value">{money(monthPaid)}</div>
-            <div className="stat-note">{monthPayments.length} úhrad</div>
-          </article>
-        </section>
-
-        <section className="dashboard-columns">
-          <div className="panel dashboard-chart-panel">
-            <div className="panel-header">
-              <div><h2>Vývoj fakturace</h2><span>{now.getFullYear()} · vystaveno vs. skutečně přijato</span></div>
-              <Link className="text-link" href="/prehledy">Detail přehledů →</Link>
-            </div>
-            <div className="dashboard-chart">
-              {monthly.map((item) => (
-                <div className="chart-month" key={item.label}>
-                  <div className="chart-bars">
-                    <div className="chart-bar chart-bar-invoiced" style={{ height: `${Math.max(4, (item.invoiced / maxMonth) * 100)}%` }} title={`Vystaveno: ${money(item.invoiced)}`} />
-                    <div className="chart-bar chart-bar-paid" style={{ height: `${Math.max(4, (item.paid / maxMonth) * 100)}%` }} title={`Přijato: ${money(item.paid)}`} />
-                  </div>
-                  <span>{item.label}</span>
-                </div>
-              ))}
-            </div>
-            <div className="chart-legend">
-              <span><i className="legend-dot legend-invoiced" /> Vystaveno</span>
-              <span><i className="legend-dot legend-paid" /> Přijato</span>
-            </div>
-          </div>
-
-          <div className="panel dashboard-quick-panel">
-            <div className="panel-header"><div><h2>Rychlé akce</h2><span>Nejčastější operace</span></div></div>
-            <div className="quick-actions">
-              <Link href="/faktury" className="quick-action"><strong>Nová faktura</strong><span>Vystavit běžný nebo konečný doklad</span><b>→</b></Link>
-              <Link href="/zalohy" className="quick-action"><strong>Nová záloha</strong><span>Vystavit zálohovou fakturu</span><b>→</b></Link>
-              <Link href="/uhrady" className="quick-action"><strong>Zadat úhradu</strong><span>Zaúčtovat přijatou platbu</span><b>→</b></Link>
-              <Link href="/zakaznici" className="quick-action"><strong>Zákazníci</strong><span>Správa firem a kontaktů</span><b>→</b></Link>
-            </div>
-          </div>
-        </section>
-
-        <section className="panel">
-          <div className="panel-header">
-            <div><h2>Poslední doklady</h2><span>Nejnovější faktury a zálohy</span></div>
-            <Link className="text-link" href="/faktury">Zobrazit vše →</Link>
-          </div>
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead><tr><th>Číslo</th><th>Zákazník</th><th>Vystaveno</th><th>Částka</th><th>Stav</th></tr></thead>
-              <tbody>
-                {recentInvoices.length ? recentInvoices.map((invoice) => {
-                  const status = effectiveInvoiceStatus(invoice);
-                  return (
-                    <tr key={invoice.id}>
-                      <td><Link className="table-link" href={`/doklad/${invoice.id}`}>{invoice.number ?? "Bez čísla"}</Link></td>
-                      <td>{invoice.customer?.name ?? "Bez zákazníka"}</td>
-                      <td>{date(invoice.issueDate)}</td>
-                      <td className="amount">{money(Number(invoice.total))}</td>
-                      <td><span className={`status ${statusClass[status] ?? "status-muted"}`}>{statusText[status] ?? status}</span></td>
-                    </tr>
-                  );
-                }) : (
-                  <tr><td colSpan={5} className="empty-cell">Zatím tu nejsou žádné doklady.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section className="panel">
-          <div className="panel-header">
-            <div><h2>Poslední úhrady</h2><span>Skutečně přijaté platby</span></div>
-            <Link className="text-link" href="/uhrady">Zobrazit vše →</Link>
-          </div>
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead><tr><th>Datum</th><th>Doklad</th><th>Zákazník</th><th>Způsob</th><th className="amount">Částka</th></tr></thead>
-              <tbody>
-                {recentPayments.length ? recentPayments.map((payment) => (
-                  <tr key={payment.id}>
-                    <td>{date(payment.paidAt)}</td>
-                    <td><Link className="table-link" href={`/doklad/${payment.invoice.id}`}>{payment.invoice.number ?? "Bez čísla"}</Link></td>
-                    <td>{payment.invoice.customer?.name ?? "Bez zákazníka"}</td>
-                    <td>{payment.method === "CASH" ? "Hotově" : payment.method === "BANK_TRANSFER" ? "Bankovní převod" : payment.method === "CARD" ? "Kartou" : "Jiný"}</td>
-                    <td className="amount">{money(Number(payment.amount))}</td>
-                  </tr>
-                )) : (
-                  <tr><td colSpan={5} className="empty-cell">Zatím tu nejsou žádné úhrady.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
-    </AppShell>
-  );
+  <section className="panel"><div className="panel-header"><div><h2>Poslední finanční pohyby</h2><span>Skutečné příjmy a výdaje za rok {year}</span></div><Link className="text-link" href="/prijmy">Příjmy →</Link></div><div className="table-wrap"><table className="data-table"><thead><tr><th>Datum</th><th>Typ</th><th>Doklad</th><th>Kategorie</th><th className="amount">Částka</th></tr></thead><tbody>{movements.slice(0,8).map(m=><tr key={m.id}><td>{date(m.date)}</td><td>{m.type==="INCOME"?"Příjem":"Výdaj"}</td><td>{m.description??m.invoice?.number??m.receivedDocument?.documentNumber??"Finanční pohyb"}</td><td>{m.category?.name??"-"}</td><td className="amount">{money(Number(m.amount))}</td></tr>)}{!movements.length&&<tr><td colSpan={5} className="empty-cell">Zatím nejsou žádné finanční pohyby.</td></tr>}</tbody></table></div></section>
+ </div></AppShell>;
 }
