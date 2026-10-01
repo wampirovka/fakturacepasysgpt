@@ -312,6 +312,8 @@ model Payment {
 
   company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
   invoice      Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  bankAccount  BankAccount?  @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
+  cashRegister CashRegister? @relation(fields: [cashRegisterId], references: [id], onDelete: SetNull)
   cashDocument CashDocument?
   financialMovement FinancialMovement?
 
