@@ -45,6 +45,7 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
           : newPaid > 0.005 ? "PARTIALLY_PAID" : "ISSUED";
 
       if (payment.cashDocument) await tx.cashDocument.delete({ where: { id: payment.cashDocument.id } });
+      await tx.financialMovement.deleteMany({ where: { paymentId: payment.id } });
       await tx.payment.delete({ where: { id: payment.id } });
       await tx.invoice.update({ where: { id: payment.invoiceId }, data: { paidAmount: newPaid, status } });
       await writeAudit(tx, {
@@ -77,6 +78,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const method = ["BANK_TRANSFER", "CASH", "CARD", "OTHER"].includes(String(body.method)) ? String(body.method) : "BANK_TRANSFER";
   const paidAt = body.paidAt ? new Date(String(body.paidAt)) : new Date();
   const note = typeof body.note === "string" ? body.note.trim() || null : null;
+  const bankAccountId = typeof body.bankAccountId === "string" ? body.bankAccountId : null;
+  const cashRegisterId = typeof body.cashRegisterId === "string" ? body.cashRegisterId : null;
+  if (method === "BANK_TRANSFER" && !bankAccountId) return NextResponse.json({ error: "Pro bankovní úhradu vyberte bankovní účet." }, { status: 400 });
+  if (method === "CASH" && !cashRegisterId) return NextResponse.json({ error: "Pro hotovostní úhradu vyberte pokladnu." }, { status: 400 });
 
   if (!Number.isFinite(amount) || amount <= 0) return NextResponse.json({ error: "Částka úhrady musí být větší než 0." }, { status: 400 });
   if (Number.isNaN(paidAt.getTime())) return NextResponse.json({ error: "Neplatné datum úhrady." }, { status: 400 });
@@ -108,7 +113,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
       const updated = await tx.payment.update({
         where: { id: existing.id },
-        data: { amount, paidAt, method: method as any, note },
+        data: { amount, paidAt, method: method as any, note, bankAccountId, cashRegisterId },
       });
 
       if (method === "CASH") {
@@ -127,6 +132,18 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         await tx.cashDocument.delete({ where: { id: existing.cashDocument.id } });
       }
 
+      if (bankAccountId) {
+        const account = await tx.bankAccount.findFirst({ where: { id: bankAccountId, companyId: result!.companyId, isActive: true } });
+        if (!account) throw new Error("Bankovní účet nebyl nalezen.");
+      }
+      if (cashRegisterId) {
+        const register = await tx.cashRegister.findFirst({ where: { id: cashRegisterId, companyId: result!.companyId, isActive: true } });
+        if (!register) throw new Error("Pokladna nebyla nalezena.");
+      }
+      await tx.financialMovement.updateMany({
+        where: { paymentId: existing.id },
+        data: { amount, date: paidAt, method: method as any, bankAccountId, cashRegisterId, description: `Úhrada faktury ${existing.invoice.number ?? existing.invoice.id}`, note },
+      });
       await tx.invoice.update({ where: { id: existing.invoiceId }, data: { paidAmount: newPaid, status } });
       await writeAudit(tx, { companyId: result!.companyId, userId: result!.userId, action: "UPDATE", entity: "PAYMENT", entityId: existing.id, details: amount.toFixed(2) });
 
