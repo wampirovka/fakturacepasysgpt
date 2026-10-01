@@ -91,6 +91,7 @@ model Company {
   invoices        Invoice[]
   numberingSeries NumberingSeries[]
   payments        Payment[]
+  receivedDocumentPayments ReceivedDocumentPayment[]
   cashDocuments   CashDocument[]
   auditLogs       AuditLog[]
   bankAccounts    BankAccount[]
@@ -383,6 +384,7 @@ model BankAccount {
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   movements FinancialMovement[]
   payments Payment[]
+  receivedDocumentPayments ReceivedDocumentPayment[]
   @@index([companyId])
 }
 
@@ -397,6 +399,7 @@ model CashRegister {
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   movements FinancialMovement[]
   payments Payment[]
+  receivedDocumentPayments ReceivedDocumentPayment[]
   @@index([companyId])
 }
 
@@ -437,6 +440,7 @@ model ReceivedDocument {
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   movements FinancialMovement[]
+  payments ReceivedDocumentPayment[]
   @@unique([companyId, documentNumber])
   @@index([companyId, issueDate])
   @@index([companyId, dueDate])
@@ -456,6 +460,7 @@ model FinancialMovement {
   invoiceId String?
   receivedDocumentId String?
   paymentId String? @unique
+  receivedDocumentPaymentId String? @unique
   note String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -466,11 +471,37 @@ model FinancialMovement {
   invoice Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
   receivedDocument ReceivedDocument? @relation(fields: [receivedDocumentId], references: [id], onDelete: SetNull)
   payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  receivedDocumentPayment ReceivedDocumentPayment? @relation(fields: [receivedDocumentPaymentId], references: [id], onDelete: SetNull)
   @@index([companyId, date])
   @@index([companyId, type, date])
   @@index([companyId, categoryId])
   @@index([companyId, bankAccountId, date])
   @@index([companyId, cashRegisterId, date])
+}
+
+
+
+model ReceivedDocumentPayment {
+  id String @id @default(cuid())
+  companyId String
+  receivedDocumentId String
+  amount Decimal @db.Decimal(15, 2)
+  paidAt DateTime @default(now())
+  method PaymentMethod
+  bankAccountId String?
+  cashRegisterId String?
+  note String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  receivedDocument ReceivedDocument @relation(fields: [receivedDocumentId], references: [id], onDelete: Cascade)
+  bankAccount BankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
+  cashRegister CashRegister? @relation(fields: [cashRegisterId], references: [id], onDelete: SetNull)
+  financialMovement FinancialMovement?
+
+  @@index([companyId, paidAt])
+  @@index([receivedDocumentId])
 }
 
 model Asset {
