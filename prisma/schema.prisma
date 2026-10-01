@@ -264,6 +264,7 @@ model Invoice {
   customer               Customer?                   @relation(fields: [customerId], references: [id], onDelete: SetNull)
   items                  InvoiceItem[]
   payments               Payment[]
+  financialMovements     FinancialMovement[]
   advanceApplications    InvoiceAdvanceApplication[] @relation("FinalInvoiceAdvance")
   appliedToFinalInvoices InvoiceAdvanceApplication[] @relation("AdvanceInvoiceApplications")
 
@@ -305,6 +306,8 @@ model Payment {
   paidAt    DateTime      @default(now())
   method    PaymentMethod
   note      String?
+  bankAccountId String?
+  cashRegisterId String?
   createdAt DateTime      @default(now())
 
   company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -377,6 +380,7 @@ model BankAccount {
   updatedAt DateTime @updatedAt
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   movements FinancialMovement[]
+  payments Payment[]
   @@index([companyId])
 }
 
@@ -390,6 +394,7 @@ model CashRegister {
   updatedAt DateTime @updatedAt
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   movements FinancialMovement[]
+  payments Payment[]
   @@index([companyId])
 }
 
