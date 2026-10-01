@@ -93,6 +93,12 @@ model Company {
   payments        Payment[]
   cashDocuments   CashDocument[]
   auditLogs       AuditLog[]
+  bankAccounts    BankAccount[]
+  cashRegisters   CashRegister[]
+  categories      Category[]
+  receivedDocuments ReceivedDocument[]
+  financialMovements FinancialMovement[]
+  assets          Asset[]
 
   @@index([ico])
 }
@@ -128,6 +134,24 @@ enum NumberingSeriesType {
   INVOICE
   ADVANCE
   CASH_DOCUMENT
+  RECEIVED_DOCUMENT
+}
+
+enum FinancialMovementType {
+  INCOME
+  EXPENSE
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+  BOTH
+}
+
+enum AssetType {
+  TANGIBLE
+  INTANGIBLE
+  OTHER
 }
 
 model Customer {
@@ -286,6 +310,7 @@ model Payment {
   company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
   invoice      Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   cashDocument CashDocument?
+  financialMovement FinancialMovement?
 
   @@index([companyId, paidAt])
   @@index([invoiceId])
@@ -336,4 +361,122 @@ model AuditLog {
 
   @@index([companyId, createdAt])
   @@index([companyId, entity, entityId])
+}
+
+
+model BankAccount {
+  id String @id @default(cuid())
+  companyId String
+  name String
+  accountNumber String?
+  bankCode String?
+  iban String?
+  openingBalance Decimal @default(0) @db.Decimal(15, 2)
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  movements FinancialMovement[]
+  @@index([companyId])
+}
+
+model CashRegister {
+  id String @id @default(cuid())
+  companyId String
+  name String
+  openingBalance Decimal @default(0) @db.Decimal(15, 2)
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  movements FinancialMovement[]
+  @@index([companyId])
+}
+
+model Category {
+  id String @id @default(cuid())
+  companyId String
+  name String
+  type CategoryType @default(BOTH)
+  isTaxDeductible Boolean @default(true)
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  movements FinancialMovement[]
+  receivedDocuments ReceivedDocument[]
+  @@unique([companyId, name])
+  @@index([companyId, type])
+}
+
+model ReceivedDocument {
+  id String @id @default(cuid())
+  companyId String
+  supplierName String
+  supplierIco String?
+  supplierDic String?
+  documentNumber String
+  issueDate DateTime
+  dueDate DateTime?
+  amount Decimal @db.Decimal(15, 2)
+  currency String @default("CZK")
+  paymentMethod PaymentMethod @default(BANK_TRANSFER)
+  paidAmount Decimal @default(0) @db.Decimal(15, 2)
+  categoryId String?
+  note String?
+  attachmentUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  movements FinancialMovement[]
+  @@unique([companyId, documentNumber])
+  @@index([companyId, issueDate])
+  @@index([companyId, dueDate])
+}
+
+model FinancialMovement {
+  id String @id @default(cuid())
+  companyId String
+  type FinancialMovementType
+  amount Decimal @db.Decimal(15, 2)
+  date DateTime @default(now())
+  method PaymentMethod
+  description String?
+  categoryId String?
+  bankAccountId String?
+  cashRegisterId String?
+  invoiceId String?
+  receivedDocumentId String?
+  paymentId String? @unique
+  note String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  bankAccount BankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
+  cashRegister CashRegister? @relation(fields: [cashRegisterId], references: [id], onDelete: SetNull)
+  invoice Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  receivedDocument ReceivedDocument? @relation(fields: [receivedDocumentId], references: [id], onDelete: SetNull)
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  @@index([companyId, date])
+  @@index([companyId, type, date])
+  @@index([companyId, categoryId])
+  @@index([companyId, bankAccountId, date])
+  @@index([companyId, cashRegisterId, date])
+}
+
+model Asset {
+  id String @id @default(cuid())
+  companyId String
+  name String
+  acquiredAt DateTime
+  purchasePrice Decimal @db.Decimal(15, 2)
+  type AssetType @default(TANGIBLE)
+  placedInService DateTime?
+  note String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  @@index([companyId, acquiredAt])
 }
