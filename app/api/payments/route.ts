@@ -38,6 +38,7 @@ export async function POST(request: Request) {
   const note = typeof body.note === "string" ? body.note.trim() || null : null;
   const bankAccountId = typeof body.bankAccountId === "string" ? body.bankAccountId : null;
   const cashRegisterId = typeof body.cashRegisterId === "string" ? body.cashRegisterId : null;
+  const categoryId = typeof body.categoryId === "string" ? body.categoryId : null;
   if (method === "BANK_TRANSFER" && !bankAccountId) return NextResponse.json({ error: "Pro bankovní úhradu vyberte bankovní účet." }, { status: 400 });
   if (method === "CASH" && !cashRegisterId) return NextResponse.json({ error: "Pro hotovostní úhradu vyberte pokladnu." }, { status: 400 });
 
@@ -67,6 +68,11 @@ export async function POST(request: Request) {
         const account = await tx.bankAccount.findFirst({ where: { id: bankAccountId, companyId: membership.companyId, isActive: true } });
         if (!account) throw new Error("Bankovní účet nebyl nalezen.");
       }
+      if (categoryId) {
+        const category = await tx.category.findFirst({ where: { id: categoryId, companyId: membership.companyId, isActive: true } });
+        if (!category || (category.type !== "BOTH" && category.type !== "INCOME")) throw new Error("Vybraná kategorie není platná pro příjem.");
+      }
+
       if (cashRegisterId) {
         const register = await tx.cashRegister.findFirst({ where: { id: cashRegisterId, companyId: membership.companyId, isActive: true } });
         if (!register) throw new Error("Pokladna nebyla nalezena.");
@@ -90,6 +96,7 @@ export async function POST(request: Request) {
           cashRegisterId,
           invoiceId: invoice.id,
           paymentId: created.id,
+          categoryId,
           note,
         },
       });
